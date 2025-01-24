@@ -4,24 +4,22 @@
 import inspect
 import sys
 from pathlib import Path
-from pprint import pprint
-
+from budgets.core import Budget, find_vals
+import pprint
 import numpy as np
+from budgets.version import __version__
 
-import budgets
-from budgets import find_vals
-
-BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("budgets")
 NAME = "mission_lifetime.yaml"
+YAML_LOC = f"../data/{NAME}"
 
+class MissionLifetime(Budget):
 
-class MissionLifetime:
     def __init__(self):
         print("initialized MissionLifetime class")
-        self.ml = budgets.Budgets(NAME)
-        # self.ml.calc_margins()
-        # self.sne_time=self.calc_sne_visit()
-        # self.transient_time = self.calc_transient_visit()
+        # instantiate the budget class
+        super(Budget, self).__init__()
+        self.ml = Budget(NAME)
+        self.ml.calc_margins()
 
         # small slew and settle
         self.small_slew = self.ml.budget["spacecraft"]["short_slew"]["cbe"] + np.min(
@@ -168,12 +166,30 @@ class MissionLifetime:
 
         return sne_tot + trans_tot + uvs_tot + wcc_tot + esc_tot + comm_tot + downtime
 
-    def run_report(self):
+    def run_report(self, output_dir):
+        """ Runs report for budget and outputs to the specified directory. 
+        :param output_dir: string to output directory path
+        """
         # Method that is called by a generic script
         # needs to be in every budget class.
-        print("Run Report method")
+        print("Running report method for mission lifetime...")
+        yaml = pprint.pformat(self.ml.budget)
+        path = output_dir.joinpath("ml-report.md")
+        report_title = "# Mission Lifetime Report\n\n"
+        end = "\n"
+        version = f"**Version:** _{__version__}_\n\n" 
         total = self.calc_total_time()
         margin = self.ml.budget["lifetime"] - total
+        total_allocation = f"- Total Allocated Time: {total / 3.154e+7:0.2f} [yrs]\n"
+        total_margin = f"- Current Margin: {margin / 3.154e+7:0.2f} [yrs]\n"
+        report_yaml = f"## [Mission Lifetime Yaml Reference]({YAML_LOC})\n\n```yaml\n {yaml} \n```\n"
+        report_results = f"## Mission Lifetime Report Results\n\n {total_allocation} {total_margin}\n"
+        report = report_title + version + report_results + report_yaml
 
-        print(f"Total allocated time is: {total/3.154e+7:0.2f} [yrs]")
-        print(f"Current margin is: {margin/3.154e+7:0.2f} [yrs]")
+        print(f"Mission Lifetime YAML:\n {yaml}\n")
+        print(report_results)
+
+        with open(path, "w+", encoding="utf-8", newline=end) as f:
+            f.write(report)
+
+        print("Mission Lifetime Budget Report completed.")
