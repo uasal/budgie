@@ -1,0 +1,29 @@
+# This is a TOML baseline observatory configuration in SI units
+
+title = "Observatory Baseline Configuration"
+
+[telescope]
+OpticalDesign = 'TMA_Mark_12F' #Daewook Kim's Space Coronagraph Optical Team Design
+fnum = 15.0
+fnum_spec = 15.0
+jitter_rms = '10e-3arcsecond'
+jitter_rms_spec = '10e-3arcsecond'
+
+# primary mirror properties
+[M1]
+D_aperture = '6.42m' # astronomically useful polished telescope clear aperture 
+D_clear_ID = '1.38m' # astronomical polished M1 inner diameter
+refl = "coatings/NIST_1st_surface_Al.csv" # NIST reference curve for aged bare aluminum
+
+rms_surface = '21e-9m' # spec from STP M1 Specification (stp202401_0003)
+rms_surface_goal = '9.4e-9m' # stretch goal from STP M1 Specification (stp202401_0003)
+rms_surface_cbe = '10.3e-9m' # Made up as an example
+
+# secondary properties
+[M2]
+D_aperture = '1.38m' # CBE of diameter of secondary baffle obscuration
+support_width = '0.15m' # CBE for secondary support baffle width
+n_supports = 3 # CBE for number of spider legs based on Daewook's design 
+
+rms_surface = '5e-9m'
+rms_surface_cbe = '5e-9m'

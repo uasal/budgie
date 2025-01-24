@@ -1,0 +1,43 @@
+name: "STP Image Quality Budget v1.2"
+
+# The following object holds the individual terms
+static:
+  description: "description of static error"
+  units: "m"
+  allocation: 20.0e-9
+  figure:
+  M1:
+    description: "M1 after 33 bending modes of compensation"
+    spec: 5.0e-9
+    trace: "derived from values XYZ."
+    cbe: 4.3e-9
+    cbe_trace: "Early mirror interferogram with a fit of 33 modes subtracted on 2023-33-11"
+    flags: ""  # Unsure at this point if it's useful.
+  M2:
+    description: "M2 after tip/tilt removal."
+    margin_exp: 5 # expected margin in %
+    units: "nm" 
+    spec: 2.0e-9
+    trace: "derived from values ABC."
+    cbe: 7.3e-9
+    cbe_trace: "Early mirror interferogram on 2023-34-55"
+
+dynamic_motion:
+  description: "description of dynamic_motion"
+  M1_position:
+    units: "m"
+    allocation: 28.0e-9
+    x:
+      spec: 5.0e-9
+      trace: "derived from values XYZ."
+      cbe: 7.3e-9
+      cbe_trace: "Early testing on 2023-34-55"
+    y:
+      spec: 5.0e-9
+      trace: "derived from values XYZ."
+      cbe: 3.3e-9
+      cbe_trace: "Early testing on 2023-34-55"
+
+
+
+
