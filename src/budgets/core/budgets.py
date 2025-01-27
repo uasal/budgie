@@ -1,10 +1,16 @@
+from abc import ABCMeta, abstractmethod
 import typing
 from pathlib import Path
-
 import numpy as np
 import yaml
 
-BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("budgets")
+
+def set_directory(budget_dir):
+    """"Sets Budget Data Path for all budgets"""
+    global BUDGET_DATA_DIR
+    BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath(budget_dir)
+
+    return BUDGET_DATA_DIR
 
 
 def find_vals(d, key):
@@ -23,26 +29,25 @@ def find_vals(d, key):
             yield from find_vals(v, key)
 
 
-class Budgets:
-
+class Budget(metaclass=ABCMeta):
     """
-    This is broken for the moment.
-
-    TBD if this should be a class.
-
+    Abstract base class for Budgets.
+    All functions marked as @abstractmethod must be defined in their subclass.
+    Any functions that are standard for all budgets to use can be overridden if needed
     Point of this is to derive an initial image quality budget example.
-
     Units shall be consistent with AstroPy units.
-
     This schema does not allow additional fields: additionalProperties is False
     """
 
-    def __init__(self, name, budget_dir=BUDGET_DATA_DIR):
-        self.name = name  # name of budget that gets instantiated
-        # needs to be a pathlib path
-        self.budget_dir = budget_dir
+    def __init__(self, name):
+        """Initializing the budget class."""
+        self.name = name
+        self.budget_dir = BUDGET_DATA_DIR
         self.budget = None
         self.get_budget()
+
+    def get_name(self):
+        return self.name
 
     def get_budget(self) -> dict[str, typing.Any]:
         """
@@ -93,9 +98,13 @@ class Budgets:
                 key1 = p[0]
                 value1 = p[1]  # dict of values
                 value2 = p[2]  # allocation
+                # print("In calc margins area.")
+                print(value1)
                 if rss:
+                    # print("in RSS section!")
                     calc_spec, calc_cbe = self.rss_values(value1)
                 else:
+                    # print("in sum section!")
                     calc_spec, calc_cbe = self.sum_values(value1)
                 self.budget[key1]["curr_spec"] = calc_spec
                 self.budget[key1]["curr_cbe"] = calc_cbe
@@ -107,7 +116,7 @@ class Budgets:
                 value2 = p[2]  # dict of values
                 value3 = p[3]  # allocation
                 if rss:
-                    print("HERE")
+                    #print("HERE")
                     print(f"{value2=}")
                     calc_spec, calc_cbe = self.rss_values(value2)
                 else:
@@ -127,11 +136,13 @@ class Budgets:
             if isinstance(v, dict):
                 for k2, v2 in v.items():
                     if k2 == "cbe":
+                        # print(v2)
                         # print(f'{k2=},{v2=}')
-                        ss_cbe += v2**2
+                        ss_cbe += v2 ** 2
                     elif k2 == "spec":
+                        # print(v2)
                         # print(f'{k2=},{v2=}')
-                        ss_spec += v2**2
+                        ss_spec += v2 ** 2
         return (np.sqrt(ss_spec), np.sqrt(ss_cbe))
 
     def sum_values(self, values):
@@ -154,3 +165,10 @@ class Budgets:
             np.sum(ss_spec),
             np.sum(ss_cbe),
         )
+
+    def run_report(self, output_dir):
+        """ Runs report for budget and outputs to the specified directory.
+        :param output_dir: string to output directory path
+        """
+        # This will change depending on budget / subclasses
+        raise NotImplementedError
