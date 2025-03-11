@@ -1,4 +1,6 @@
-name: "STP Image Quality Budget v1.2"
+budget:
+  name: "STP Image Quality Budget"
+  version: "v1.2"
 
 # The following object holds the individual terms
 static:
