@@ -7,6 +7,7 @@ from budgets.core import (
     TransientResponse,
     WaveFrontError,
     Budget,
+    Plantuml_Writer,
     find_vals,
     set_directory,
 )
