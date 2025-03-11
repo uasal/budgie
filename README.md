@@ -7,6 +7,11 @@ Originally on GitLab: https://gitlab.sc.ascendingnode.tech:8443/pearl-systems/bu
 
 Use the `test.sh` and edit the data file names with the names of the actual ones added to the data directory to run a report test for the budgets added. This will install the budgie package as well in the process.
 
+## Plantuml Diagrams
+A 'demo' for visualizing the initial budget yaml files is added to this tool and requires [`plantuml`](https://plantuml.com) (plantuml.jar is provided).
+
+**Future Implementation:** Using just graphviz or something similar will require some modifications on the `budgets.py` to prevent repeating of some code aspects and improve reporting mechanics. Plantuml will no longer be needed for the diagram portion in that implementation. In order to use `budgie`, you do **not** need to have plantuml for the other functions.
+
 ## Related Documents
 - [STP Budget Package Description](docs/design_description.md)
 
