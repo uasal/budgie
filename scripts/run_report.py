@@ -2,9 +2,13 @@ import sys
 from pathlib import Path
 from budgets import *
 
+# Test diagram temp section / demo
+file_test = "tests/data/test_budget.yaml"
+destination = "diagrams/test_plantuml.yaml"
 
-# Sets the budget data path for looking up any budget yaml files.
+# Sets the budget data path for looking up any budget yaml files and reports output directory.
 set_directory(Path(__file__).parents[1].joinpath("data"))
+output_dir = Path(__file__).parents[1].joinpath("reports")
 print('Grabbing yaml file(s) for running report...')
 print("Argument list collected: ", sys.argv)
 args = 1
@@ -28,11 +32,13 @@ if __name__ == "__main__":
             raise LookupError(f"Cannot find {budget_name}")
         # Increment args
         args = args + 1
-        # Sets the report directory for any reports run to write too.
-        output_dir = Path(__file__).parents[1].joinpath("reports")
         # Perform calculations for budget(s) and generates an output markdown file with results.
         budget.run_report(output_dir)
         print("Budget Report Results printed to: " + str(output_dir))
+
+    # Quick test / demo example for the plantuml diagram
+    print("Creating plantuml file and generating diagram from yaml...")
+    diagram = Plantuml_Writer.create_plantuml(file_test, destination)
 
     # Will give a message if no arguments were provided.
     if len(sys.argv) == 1:
