@@ -168,3 +168,6 @@ cython_debug/
 # Ignore version.py
 src/version.py
 
+#Ignore data files
+data/*
+
