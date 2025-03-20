@@ -1,8 +1,8 @@
 #from importlib.metadata import PackageNotFoundError, version
 #import sys
-from budgets.version import __version__
+from budgie.version import __version__
 
-from budgets.core import (
+from budgie.core import (
     MissionLifetime,
     TransientResponse,
     WaveFrontError,
@@ -12,13 +12,13 @@ from budgets.core import (
     set_directory,
 )
 
-from budgets.core.tests import (
+from budgie.core.tests import (
     TestBudgets,
     TestWaveFrontError,
 )
-__project__ = "budgets"
+__project__ = "budgie"
 
 
-CLI = "budgets"
+CLI = "budgie"
 VERSION = "{0} v{1}".format(__project__, __version__)
-DESCRIPTION = "Budgets and margin calculation."
+DESCRIPTION = "budgie and margin calculation."

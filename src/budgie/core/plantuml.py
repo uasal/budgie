@@ -1,4 +1,4 @@
-from budgets.core import Budget
+from budgie.core import Budget
 import yaml
 import subprocess
 from copy import deepcopy

@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from budgets import logging
+from budgie import logging
 
 
 # STILL IN DEVELOPMENT
@@ -10,6 +10,6 @@ from budgets import logging
 log = logging.logger(__name__)
 
 def main(args=None):
-    """Processes command arguments to use budgets"""
-    from budgets import CLI, VERSION, DESCRIPTION
+    """Processes command arguments to use budgie"""
+    from budgie import CLI, VERSION, DESCRIPTION
 
