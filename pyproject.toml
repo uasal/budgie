@@ -14,7 +14,7 @@ license = { text = "GPL" }
 classifiers = [ "Programming Language :: Python :: 3" ]
 dynamic = [ "version" ]
 dependencies = [
-'pyyaml',
+'pyyaml', 'numpy', 'poppy', 'pandas', 'plantuml',
 ]
 
 [tool.setuptools.dynamic]
