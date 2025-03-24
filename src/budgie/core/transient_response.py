@@ -7,8 +7,8 @@ import pprint
 
 import numpy as np
 
-from budgets.core import Budget, MissionLifetime, find_vals
-from budgets.version import __version__
+from budgie.core import Budget, MissionLifetime, find_vals
+from budgie.version import __version__
 
 #BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("data")
 NAME = "transient_response.yaml"

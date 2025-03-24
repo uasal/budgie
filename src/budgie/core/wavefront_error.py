@@ -8,8 +8,8 @@ import math
 import numpy as np
 import pprint
 
-from budgets.core import Budget, find_vals
-from budgets.version import __version__
+from budgie.core import Budget, find_vals
+from budgie.version import __version__
 
 #BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("data")
 NAME = "wavefront_error.yaml"

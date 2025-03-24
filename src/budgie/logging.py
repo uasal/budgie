@@ -17,18 +17,18 @@ log = logger(__name__)
 # exception classes ##########################################################
 
 
-class BudgetError(Exception):
+class BudgieError(Exception):
     """Generic error."""
 
-class BudgetFileError(BudgetError, IOError):
+class BudgieFileError(BudgieError, IOError):
     """Raised on IO errors."""
 
 
-class BudgetWarning(BudgetError, Warning):
+class BudgieWarning(BudgieError, Warning):
     """Generic Doorstop warning."""
 
 
-class BudgetInfo(BudgetWarning, Warning):
+class BudgieInfo(BudgieWarning, Warning):
     """Generic Doorstop info."""
 
 # logging classes ############################################################
