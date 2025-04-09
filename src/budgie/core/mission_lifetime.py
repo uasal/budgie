@@ -4,10 +4,10 @@
 import inspect
 import sys
 from pathlib import Path
-from budgets.core import Budget, find_vals
+from budgie.core import Budget, find_vals
 import pprint
 import numpy as np
-from budgets.version import __version__
+from budgie.version import __version__
 
 NAME = "mission_lifetime.yaml"
 YAML_LOC = f"../data/{NAME}"

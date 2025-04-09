@@ -74,23 +74,18 @@ class Budget(metaclass=ABCMeta):
                 for key2, value2 in value1.items():
                     # Occurs if allocation is in the 2nd layer, so in this case one must loop over all keys at the same layer, see if there is a second layer, then grab the cbes/specs.
                     if key2 == "allocation":
-                        # print(f'allocation! - {key1=},{value1=},{key2=},{value2=}')
                         places.append(
                             [key1, value1, value2]
                         )  # stores high level key, set of values with it, and the allocation value
                     if isinstance(value2, dict):
                         for key3, value3 in value2.items():
                             if key3 == "allocation":
-                                # print(
-                                #     f"allocation2! - {key1=},{key2=},{value2=},{value3=}"
-                                # )
                                 places.append(
                                     [key1, key2, value2, value3]
                                 )  # stores high level key, set of values with it, and the allocation value
 
             else:
                 if key1 == "allocation":
-                    # print(f"allocation2! - {key1=},{value1=}")
                     raise IOError("I don't know if this can happen?")
 
         for p in places:
@@ -98,13 +93,10 @@ class Budget(metaclass=ABCMeta):
                 key1 = p[0]
                 value1 = p[1]  # dict of values
                 value2 = p[2]  # allocation
-                # print("In calc margins area.")
                 print(value1)
                 if rss:
-                    # print("in RSS section!")
                     calc_spec, calc_cbe = self.rss_values(value1)
                 else:
-                    # print("in sum section!")
                     calc_spec, calc_cbe = self.sum_values(value1)
                 self.budget[key1]["curr_spec"] = calc_spec
                 self.budget[key1]["curr_cbe"] = calc_cbe
@@ -116,7 +108,6 @@ class Budget(metaclass=ABCMeta):
                 value2 = p[2]  # dict of values
                 value3 = p[3]  # allocation
                 if rss:
-                    #print("HERE")
                     print(f"{value2=}")
                     calc_spec, calc_cbe = self.rss_values(value2)
                 else:
@@ -132,16 +123,11 @@ class Budget(metaclass=ABCMeta):
         ss_spec = 0
         ss_cbe = 0
         for _, v in values.items():
-            # print(f'{k=},{v=}')
             if isinstance(v, dict):
                 for k2, v2 in v.items():
                     if k2 == "cbe":
-                        # print(v2)
-                        # print(f'{k2=},{v2=}')
                         ss_cbe += v2 ** 2
                     elif k2 == "spec":
-                        # print(v2)
-                        # print(f'{k2=},{v2=}')
                         ss_spec += v2 ** 2
         return (np.sqrt(ss_spec), np.sqrt(ss_cbe))
 
@@ -151,14 +137,11 @@ class Budget(metaclass=ABCMeta):
         ss_spec = 0
         ss_cbe = 0
         for _, v in values.items():
-            # print(f'{k=},{v=}')
             if isinstance(v, dict):
                 for k2, v2 in v.items():
                     if k2 == "cbe":
-                        # print(f'{k2=},{v2=}')
                         ss_cbe += v2
                     elif k2 == "spec":
-                        # print(f'{k2=},{v2=}')
                         ss_spec += v2
 
         return (

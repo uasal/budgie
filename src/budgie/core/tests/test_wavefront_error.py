@@ -3,7 +3,7 @@ import pprint
 from pathlib import Path
 from unittest import TestCase
 import numpy as np
-from budgets import WaveFrontError
+from budgie import WaveFrontError
 
 TEST_SUPPORT_DATA_DIR = Path(__file__).parents[1].joinpath("tests", "data")
 
@@ -30,7 +30,7 @@ class TestWaveFrontError(TestCase):
         # _got = np.max(coords.r_grid)
 
 
-# path = "../budgets/wavefront_error/wavefront_error.yaml"
+# path = "../budgie/wavefront_error/wavefront_error.yaml"
 # with open(path, "r") as file:
 #     iq = yaml.safe_load(file)
 

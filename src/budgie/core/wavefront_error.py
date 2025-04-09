@@ -8,10 +8,9 @@ import math
 import numpy as np
 import pprint
 
-from budgets.core import Budget, find_vals
-from budgets.version import __version__
+from budgie.core import Budget, find_vals
+from budgie.version import __version__
 
-#BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("data")
 NAME = "wavefront_error.yaml"
 YAML_LOC = f"../data/{NAME}"
 
@@ -29,9 +28,6 @@ class WaveFrontError(Budget):
         """Calculates totals of CBE, allocation, and spec"""
 
         # Use recursion to go infinitely deep and get each curr_cbe, curr_spec, and allocation
-
-        # tmp = list(find_vals(self.wfe.budget, "allocation"))
-        # print(f"allocation {[round(i * 1e9) for i in tmp]=}")
 
         vals = list(find_vals(self.wfe.budget, "curr_spec"))
         # now RSS the list.

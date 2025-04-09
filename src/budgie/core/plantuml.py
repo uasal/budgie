@@ -1,4 +1,4 @@
-from budgets.core import Budget
+from budgie.core import Budget
 import yaml
 import subprocess
 from copy import deepcopy
@@ -26,7 +26,7 @@ class Plantuml_Writer:
 
         with open(file, 'r') as source:
             data = yaml.safe_load(source)
-        #print(deepcopy(data))
+            source.close()
         header = "@startyaml" + "\n"
         footer = "\n" + "@endyaml" + "\n"
         modified = deepcopy(data)
@@ -40,10 +40,9 @@ class Plantuml_Writer:
             yaml.dump(header, output)
             yaml.dump(modified, output)
             yaml.dump(footer, output)
+            output.close()
 
         print(f"Outputting diagram generated from {destination}")
         cmd = f"java -jar plantuml.jar {destination}"
-        plantuml_cmd = subprocess.run(cmd, capture_output=True, text=True)
-        #print(plantuml_cmd)
-        #print(plantuml_cmd.stdout)
+        plantuml_cmd = subprocess.run(cmd, capture_output=True, text=True, shell=True)
 

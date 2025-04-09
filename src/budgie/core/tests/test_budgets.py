@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from budgets import Budget
+from budgie import Budget
 
 TEST_SUPPORT_DATA_DIR = Path(__file__).parents[1].joinpath("tests", "data")
 
