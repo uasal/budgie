@@ -27,7 +27,6 @@ class Plantuml_Writer:
         with open(file, 'r') as source:
             data = yaml.safe_load(source)
             source.close()
-        #print(deepcopy(data))
         header = "@startyaml" + "\n"
         footer = "\n" + "@endyaml" + "\n"
         modified = deepcopy(data)
@@ -46,6 +45,4 @@ class Plantuml_Writer:
         print(f"Outputting diagram generated from {destination}")
         cmd = f"java -jar plantuml.jar {destination}"
         plantuml_cmd = subprocess.run(cmd, capture_output=True, text=True, shell=True)
-        #print(plantuml_cmd)
-        #print(plantuml_cmd.stdout)
 
