@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from budgets import *
+from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
@@ -20,7 +20,6 @@ if __name__ == "__main__":
     # Run throw all the positions of args collected and stop before it reaches the end.
     while args < len(sys.argv):
         budget_name = sys.argv[args]
-        #print(f"{budget_name=}")
         # Determine budget subclass based on the name of file
         if budget_name == "wavefront_error.yaml":
             budget = WaveFrontError()
