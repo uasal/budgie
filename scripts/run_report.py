@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
+from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer, ScatteredLight
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
@@ -22,11 +22,13 @@ if __name__ == "__main__":
         budget_name = sys.argv[args]
         # Determine budget subclass based on the name of file
         if budget_name == "wavefront_error.yaml":
-            budget = WaveFrontError()
+            budget = WaveFrontError(budget_name)
         elif budget_name == "mission_lifetime.yaml":
-            budget = MissionLifetime()
+            budget = MissionLifetime(budget_name)
         elif budget_name == "transient_response.yaml":
-            budget = TransientResponse()
+            budget = TransientResponse(budget_name)
+        elif "Scattered" in budget_name:
+            budget = ScatteredLight(budget_name)
         else:
             raise LookupError(f"Cannot find {budget_name}")
         # Increment args
