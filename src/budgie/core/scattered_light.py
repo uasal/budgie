@@ -12,11 +12,12 @@ import numpy as np
 from budgie.version import __version__
 import pandas as pd
 import sys
+import utils_config
 
 
 # Is there a more pythonic way to do this?
 try:
-    import config_stp
+    import config_stp 
 except ImportError:
     config_stp = None
 try:
@@ -39,12 +40,26 @@ logger.addHandler(consoleHandler)
 logger.setLevel("DEBUG") 
 
 
-class ScatteredLight():
+class ScatteredLight(Budget):
     def __init__(self,budget_name):
         logger.debug("Initialized ScatteredLight class")
         super(Budget, self).__init__()
 
         self.scattered = Budget(budget_name)
+        
+        if self.scattered.budget["project"] == "um":
+            conf_project = config_um
+        elif self.scattered.budget["project"] == "stp":
+            conf_project = config_um
+        else:
+            raise ValueError(f"The budget project tag of {self.scattered.budget["project"]} must be set to 'um' or 'stp'.")
+
+        config = conf_project.load_config_values()
+        conf_pkg_path = Path(conf_project.__file__)
+        # Print the versions of the repo
+        version = conf_project.__version__
+
+        #FIXME - write info message about repo version.
 
 
     def plot_pst(theta, pst, title, color, label):
@@ -60,6 +75,8 @@ class ScatteredLight():
 
     def calc_plate_scale(self):
         """Calculates the plate scale"""
+
+
 
     def calc_fov(self):
 
@@ -96,14 +113,18 @@ class ScatteredLight():
 
         return total_cbe, total_spec, total_allocation
 
-    def run_report(self):
+    def run_report(self, output_dir):
         # Method that is called by a generic script
         # needs to be in every budget class.
 
         # Read in PST data (theta and power in y and x dims)
+        # Note that the filename is relative to the budget location
+        pst_file = Path(self.scattered.budget_dir).joinpath(self.scattered.budget['inputs']['pst_file']['value'])
+        pst_y, pst_x = self.read_pst(pst_file)
+
 
         # create plots of PST(s) -- relative irradiance - 
-
+        logger.info("HEre I ame")
         # Normalize to be 1 at the center of the field
 
         # Convert to Watts/m^2/arcsec for a 0th magnitude star
@@ -118,20 +139,23 @@ class ScatteredLight():
         # Determine coverage for an Xth magnitude star with a radius of R
 
 
-        total_cbe, total_spec, total_allocation = self.calc_total_time()
-        pprint(self.tr.budget)
+    def read_pst(self, filename):
+        """Reads PST files. Currently only xlsx is supported which is the file
+        that is exported by the FRED model."""
 
-        print(f"Total CBE Time [min]: {total_cbe/60:0.2f} [min]")
-        print(f"Total Specified Time: {total_spec/60:0.2f} [min]")
-        print(f"Total Allocated Time: {total_allocation/60:0.2f} [min]")
+        if "xlsx" in str(filename):
+            df_y = pd.read_excel(filename, sheet_name=0)  # First sheet (Y-axis PST)
+            df_x = pd.read_excel(filename, sheet_name="x_pst")  # X-axis PST
+        else:
+            raise ValueError(f'Only xlsx file extensions supported.')
+        
+        return df_y, df_x
 
-        print(
-            f"Total Margin against Specified Time: {(total_allocation-total_spec)/60:0.2f} [min]"
-        )
-        print(
-            f"Total Margin against CBE Time: {(total_allocation-total_cbe)/60:0.2f} [min]"
-        )
-
+    # Extract data function
+    # FIXME: I don't really understand what this does yet.
+    def extract_data(df, start, end, col):
+        data = df.iloc[start:end, col].reset_index(drop=True)  # Reset index for alignment
+        return data
 
 # # Load Excel data
 # dir = "/Users/pingraham/repos/gitlab/budgets/src/scattered_light"
@@ -147,10 +171,7 @@ class ScatteredLight():
 # df_x = pd.read_excel(pst_file, sheet_name="x_pst")  # X-axis PST
 # df_x_ns = pd.read_excel(pst_file_ns, sheet_name="x_pst")  # No scatter model (X-axis)
 
-# # Extract data function
-# def extract_data(df, start, end, col):
-#     data = df.iloc[start:end, col].reset_index(drop=True)  # Reset index for alignment
-#     return data
+
 
 
 # # Function for safe normalization that fully avoids division by zero

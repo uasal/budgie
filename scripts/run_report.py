@@ -27,7 +27,7 @@ if __name__ == "__main__":
             budget = MissionLifetime(budget_name)
         elif budget_name == "transient_response.yaml":
             budget = TransientResponse(budget_name)
-        elif "Scattered" in budget_name:
+        elif "scattered" in budget_name.lower():
             budget = ScatteredLight(budget_name)
         else:
             raise LookupError(f"Cannot find {budget_name}")
