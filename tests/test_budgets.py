@@ -1,22 +1,22 @@
 import inspect
 from pathlib import Path
 from unittest import TestCase
+from budgie import set_directory
 
 import numpy as np
 
 from budgie import Budget
 
-TEST_SUPPORT_DATA_DIR = Path(__file__).parents[1].joinpath("tests", "data")
-
+# Set the directory of the test data
+set_directory(Path(__file__).parents[1].joinpath("tests/data"))
 
 class TestBudgets(TestCase):
     "Tests for psd_utils."
-
+        
     def test_calc_margins(self):
         """Tests."""
 
-        filename = TEST_SUPPORT_DATA_DIR.joinpath("test_budget.yaml")
-        print(f"{filename=}")
-        test_bud = Budget(filename, budget_dir=TEST_SUPPORT_DATA_DIR)
+        filename = "test_budget.yaml"
+        test_bud = Budget(filename)
         margins = test_bud.calc_margins()
 
