@@ -17,11 +17,11 @@ YAML_LOC = f"../data/{NAME}"
 
 class WaveFrontError(Budget):
 
-    def __init__(self):
+    def __init__(self, name):
         print("initialized WaveFrontError class")
         # instantiate the budget class
         super(Budget, self).__init__()
-        self.wfe = Budget(NAME)
+        self.wfe = Budget(name)
         self.wfe.calc_margins()
 
     def calc_total_wfe(self):
@@ -31,13 +31,19 @@ class WaveFrontError(Budget):
 
         vals = list(find_vals(self.wfe.budget, "curr_spec"))
         # now RSS the list.
-        total_spec = np.sqrt(np.sum(i * i for i in vals))
+        # total_spec = np.sqrt(np.sum(i * i for i in vals)) # deprecated behavior
+
+        # create a generator to modernize
+        gen = (i**2 for i in vals)
+        total_spec = np.sqrt(np.sum(np.fromiter(gen,dtype=float)))
 
         vals = list(find_vals(self.wfe.budget, "curr_cbe"))
-        total_cbe = np.sqrt(np.sum(i * i for i in vals))
+        gen = (i**2 for i in vals)
+        total_cbe = np.sqrt(np.sum(np.fromiter(gen,dtype=float)))
 
         vals = list(find_vals(self.wfe.budget, "allocation"))
-        total_allocation = np.sqrt(np.sum(i * i for i in vals))
+        gen = (i**2 for i in vals)
+        total_allocation = np.sqrt(np.sum(np.fromiter(gen,dtype=float)))
 
         return total_cbe, total_spec, total_allocation
 
