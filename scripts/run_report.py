@@ -25,6 +25,7 @@ if __name__ == "__main__":
             set_directory(Path(budget_name).parents[1].joinpath("data"))
             output_dir = Path(budget_name).parents[1].joinpath("reports")
 
+
         # Determine budget subclass based on the name of file
         if "wavefront_error.yaml" in str(budget_name).lower():
             budget = WaveFrontError(budget_name)
@@ -43,8 +44,12 @@ if __name__ == "__main__":
         print("Budget Report Results printed to: " + str(output_dir))
 
     # Quick test / demo example for the plantuml diagram
-    print("Creating plantuml file and generating diagram from yaml...")
-    diagram = Plantuml_Writer.create_plantuml(budget_name, output_dir)
+    # FIXME: bug below somewhere
+    # print("Creating plantuml file and generating diagram from yaml...")
+    
+    # diagram = Plantuml_Writer.create_plantuml(budget_name, output_dir)
+    output_file = output_dir.joinpath(budget_name.stem+'_pl.yaml')
+    diagram = Plantuml_Writer.create_plantuml(budget_name, output_file)
 
     # Will give a message if no arguments were provided.
     if len(sys.argv) == 1:

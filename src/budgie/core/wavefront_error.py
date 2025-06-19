@@ -65,8 +65,11 @@ class WaveFrontError(Budget):
         #wavefront error for a Strehl of 0.8
         # s= exp( -(2*pi*w)^2), where w is the RMS WFE in waves.
         # sqrt(-ln s) / (2*pi)) = w 
-        s08_wfe = math.sqrt(-math.log(0.8))/(2*math.pi) # in waves
-        total_rms_wfe = f"- Total RMS WFE for a Strehl of 0.8 at 1um is: {s08_wfe*1000:0.2f} [nm]\n"
+        strehl=self.wfe.budget['strehl_spec'] 
+        strehl_wfe_waves = math.sqrt(-math.log(strehl))/(2*math.pi) # in waves
+        
+        design_wavelength = self.wfe.budget['design_wavelength']  # [nm]
+        total_rms_wfe = f"- Total RMS WFE for a Strehl of 0.8 at {design_wavelength:0.2e} [nm] is: {strehl_wfe_waves*design_wavelength:0.2f} [nm]\n"
         total_cbe_wfe = f"- Total CBE WFE: {total_cbe*1e9:0.2f} [nm] \n"
         total_spec_wfe = f"- Total Specified WFE: {total_spec*1e9:0.2f} [nm] \n"
         total_allocation_wfe = f"- Total Allocated WFE: {total_allocation*1e9:0.2f} [nm]\n"

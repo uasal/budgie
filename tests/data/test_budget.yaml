@@ -3,6 +3,9 @@ budget:
   version: "v1.2"
 
 # The following object holds the individual terms
+design_wavelength: 633.0 # [nm]
+strehl_spec: 0.8
+
 static:
   description: "description of static error"
   units: "m"

@@ -19,7 +19,7 @@ def find_vals(d, key):
     if isinstance(d, dict):
         for k, v in d.items():
             if k == key:
-                print(f"{key=}, {v=}")
+                # print(f"{key=}, {v=}")
                 yield v
             else:
                 yield from find_vals(v, key)
