@@ -166,7 +166,7 @@ cython_debug/
 #.idea/
 
 # Ignore version.py
-src/version.py
+src/budgie/version.py
 
 #Ignore data files
 data/*

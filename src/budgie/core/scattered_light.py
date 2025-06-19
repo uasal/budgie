@@ -336,11 +336,11 @@ class ScatteredLight(Budget):
         # From the hubble paper
         # 5.17E-18 ergcm−2 s−1 Å−1 arcsec−2
         # 10^7 ergs/ Joule
-        zodi_flux1 = (5.17e-18 / 1e7 * (100**2) * 5500)*u.Unit('W / (m2 arcsec2)')  # W/m2/arcsec2 at 0.55um
+        zodi_flux1 = (5.17e-18 / 1e7 * (100**2) * 5500)*u.Unit('W / (m2 arcsec2)')  # W/m2/arcsec2 at 0.55um, which is 2.84e-17 W/ (arcsec2 m2)
         logger.debug(f"{zodi_flux1=}")
 
         # From Levasseur
-        zodi_flux2 = 195 * 1.261e-8 * 0.55 / 4.2545e10  # W/m2/arcsec2
+        zodi_flux2 = 195 * 1.261e-8 * 0.55 / 4.2545e10  # W/m2/arcsec2   -- 3.18e-17 W/ (arcsec2 m2)
         logger.debug(f"{zodi_flux2=}")
 
         # Use the Hubble paper
