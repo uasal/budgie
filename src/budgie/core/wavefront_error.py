@@ -69,14 +69,15 @@ class WaveFrontError(Budget):
         strehl_wfe_waves = math.sqrt(-math.log(strehl))/(2*math.pi) # in waves
         
         design_wavelength = self.wfe.budget['design_wavelength']  # [nm]
-        total_rms_wfe = f"- Total RMS WFE for a Strehl of 0.8 at {design_wavelength:0.2e} [nm] is: {strehl_wfe_waves*design_wavelength:0.2f} [nm]\n"
+        total_rms_wfe = f"- Total RMS WFE for a Strehl of 0.8 at {design_wavelength:0.1f} [nm] is: {strehl_wfe_waves*design_wavelength:0.2f} [nm]\n"
         total_cbe_wfe = f"- Total CBE WFE: {total_cbe*1e9:0.2f} [nm] \n"
         total_spec_wfe = f"- Total Specified WFE: {total_spec*1e9:0.2f} [nm] \n"
         total_allocation_wfe = f"- Total Allocated WFE: {total_allocation*1e9:0.2f} [nm]\n"
         total_margin_spec_wfe = f"- Total Margin against Specified WFE: {(total_allocation-total_spec)*1e9:0.2f} [nm]\n"
         total_margin_cbe_wfe = f"- Total Margin against CBE WFE: {(total_allocation-total_cbe)*1e9:0.2f} [nm]\n"
         report = report_title + version + report_results + total_rms_wfe + total_cbe_wfe + total_spec_wfe + total_allocation_wfe + total_margin_spec_wfe + total_margin_cbe_wfe + end + report_budget
-        print(report)
+        short_report = report_title + version + total_rms_wfe + total_cbe_wfe + total_spec_wfe + total_allocation_wfe + total_margin_spec_wfe + total_margin_cbe_wfe + end 
+        print(short_report)
 
         with open(path, "w+", encoding="utf-8", newline=end) as f:
             f.write(report)
