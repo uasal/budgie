@@ -12,7 +12,7 @@ from budgie.version import __version__
 
 #BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("data")
 NAME = "transient_response.yaml"
-YAML_LOC = f"../data/{NAME}"
+YAML_LOC = f"../budgets/yaml/{NAME}"
 
 
 class TransientResponse(Budget):
@@ -62,13 +62,14 @@ class TransientResponse(Budget):
         # Method that is called by a generic script
         # needs to be in every budget class.
         print("Running Transient Response Report...")
+        report_name = NAME.replace(".yaml", "md")
+        path = output_dir.joinpath(report_name)
         report_title = "# Transient Response Report\n\n"
         data_header = "## Transient Response Results\n\n"
         version = f"**Version:** _{__version__}_\n\n" 
         total_cbe, total_spec, total_allocation = self.calc_total_time()
         yaml = pprint.pformat(self.tr.budget)
         yaml_data = f"## [Transient Response Yaml]({YAML_LOC})\n\n```yaml\n {yaml} \n```\n"
-        path = output_dir.joinpath("tr-report.md")
         end = "\n"
 
         total_cbe_time = f"- Total CBE Time [min]: {total_cbe/60:0.2f} [min]\n"

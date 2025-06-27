@@ -12,20 +12,23 @@ from budgie.core import Budget, find_vals
 from budgie.version import __version__
 
 NAME = "wavefront_error.yaml"
-YAML_LOC = f"../data/{NAME}"
-
+YAML_LOC = f"../budgets/yaml/{NAME}"
 
 class WaveFrontError(Budget):
 
-    def __init__(self):
+    def __init__(self, name):
         print("initialized WaveFrontError class")
         # instantiate the budget class
         super(Budget, self).__init__()
+
+        self.name = name
+        global NAME
+        NAME = self.name
         self.wfe = Budget(NAME)
         self.wfe.calc_margins()
 
     def calc_total_wfe(self):
-        """Calculates totals of CBE, allocation, and spec"""
+        """Calculates totals ofCBE, allocation, and spec"""
 
         # Use recursion to go infinitely deep and get each curr_cbe, curr_spec, and allocation
 
@@ -47,7 +50,8 @@ class WaveFrontError(Budget):
         """
         # Method that is called by a generic script
         # needs to be in every budget class.
-        path = output_dir.joinpath("wfe-report.md")
+        report_name = NAME.replace(".yaml",".md")
+        path = output_dir.joinpath(report_name)
         report_title = "# Wavefront Error Report\n\n"
         yaml = pprint.pformat(self.wfe.budget)
         report_budget = f"## [WFE Yaml Reference]({YAML_LOC})\n\n```yaml\n {yaml} \n```\n"
