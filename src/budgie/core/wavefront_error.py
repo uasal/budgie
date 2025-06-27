@@ -50,6 +50,8 @@ class WaveFrontError(Budget):
         """
         # Method that is called by a generic script
         # needs to be in every budget class.
+        global YAML_LOC
+        YAML_LOC = f"../budgets/yaml/{NAME}"
         report_name = NAME.replace(".yaml",".md")
         path = output_dir.joinpath(report_name)
         report_title = "# Wavefront Error Report\n\n"
