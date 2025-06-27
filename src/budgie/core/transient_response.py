@@ -62,7 +62,7 @@ class TransientResponse(Budget):
         # Method that is called by a generic script
         # needs to be in every budget class.
         print("Running Transient Response Report...")
-        report_name = NAME.replace(".yaml", "md")
+        report_name = NAME.replace(".yaml", ".md")
         path = output_dir.joinpath(report_name)
         report_title = "# Transient Response Report\n\n"
         data_header = "## Transient Response Results\n\n"
