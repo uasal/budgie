@@ -28,7 +28,7 @@ class WaveFrontError(Budget):
         self.wfe.calc_margins()
 
     def calc_total_wfe(self):
-        """Calculates totals ofCBE, allocation, and spec"""
+        """Calculates totals of CBE, allocation, and spec"""
 
         # Use recursion to go infinitely deep and get each curr_cbe, curr_spec, and allocation
 
