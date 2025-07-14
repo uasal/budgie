@@ -10,7 +10,7 @@ import numpy as np
 from budgie.version import __version__
 
 NAME = "mission_lifetime.yaml"
-YAML_LOC = f"../data/{NAME}"
+YAML_LOC = f"../budgets/yaml/{NAME}"
 
 class MissionLifetime(Budget):
 
@@ -173,8 +173,9 @@ class MissionLifetime(Budget):
         # Method that is called by a generic script
         # needs to be in every budget class.
         print("Running report method for mission lifetime...")
+        report_name = NAME.replace(".yaml", ".md")
+        path = output_dir.joinpath(report_name)
         yaml = pprint.pformat(self.ml.budget)
-        path = output_dir.joinpath("ml-report.md")
         report_title = "# Mission Lifetime Report\n\n"
         end = "\n"
         version = f"**Version:** _{__version__}_\n\n" 
