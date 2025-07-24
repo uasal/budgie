@@ -4,6 +4,7 @@
 from pathlib import Path
 from pprint import pprint
 import math
+import yaml
 
 import numpy as np
 import pprint
@@ -58,8 +59,9 @@ class WaveFrontError(Budget):
         # needs to be in every budget class.
         path = output_dir.joinpath("wfe-report.md")
         report_title = "# Wavefront Error Report\n\n"
-        yaml = pprint.pformat(self.wfe.budget)
-        report_budget = f"## [WFE Yaml Reference]({self.path_to_yaml.parent})\n\n```yaml\n {yaml} \n```\n"
+        yaml_out = pprint.pformat(self.wfe.budget)
+        # yaml_out = yaml.safe_dump(self.wfe.budget) # this fails
+        report_budget = f"## [WFE Yaml Reference]({self.path_to_yaml.parent})\n\n```yaml\n {yaml_out} \n```\n"
         version = f"**Version:** _{__version__}_\n\n"
         report_results = "## WFE Report Results\n\n"
         end = "\n"
@@ -95,12 +97,19 @@ class WaveFrontError(Budget):
         with open(path, "w+", encoding="utf-8", newline=end) as f:
             f.write(report)
 
+        # Also write out the budget results only
+        # Write YAML to a file
+        yaml_path = output_dir.joinpath("wfe-report.yaml")
+        with open(yaml_path, 'w') as file:
+            # yaml.safe_dump(self.wfe.budget, file, default_flow_style=False, indent=4) # fails
+            yaml.dump(self.wfe.budget, file, default_flow_style=False, indent=4)
+
         # Quick test / demo example for the plantuml diagram
         print("Creating plantuml file and generating diagram from yaml...")
 
         dest_filename = self.path_to_yaml.stem + "_plantuml.yaml"
         destination = (output_dir.joinpath("diagrams")).joinpath(dest_filename)
-        # Don't get why this doesn't work
+        # FIXME: Don't get why this doesn't work
         # diagram = Plantuml_Writer.create_plantuml(self.path_to_yaml, destination)
 
         print(
