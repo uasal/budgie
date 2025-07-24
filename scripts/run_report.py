@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
+from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
@@ -9,7 +9,7 @@ destination = "diagrams/test_plantuml.yaml"
 # Sets the budget data path for looking up any budget yaml files and reports output directory.
 set_directory(Path(__file__).parents[1].joinpath("data"))
 output_dir = Path(__file__).parents[1].joinpath("reports")
-print('Grabbing yaml file(s) for running report...')
+print("Grabbing yaml file(s) for running report...")
 print("Argument list collected: ", sys.argv)
 args = 1
 
@@ -21,8 +21,8 @@ if __name__ == "__main__":
     while args < len(sys.argv):
         budget_name = sys.argv[args]
         # Determine budget subclass based on the name of file
-        if budget_name == "wavefront_error.yaml":
-            budget = WaveFrontError()
+        if "wavefront" in budget_name:
+            budget = WaveFrontError(budget_name)
         elif budget_name == "mission_lifetime.yaml":
             budget = MissionLifetime()
         elif budget_name == "transient_response.yaml":
@@ -35,11 +35,8 @@ if __name__ == "__main__":
         budget.run_report(output_dir)
         print("Budget Report Results printed to: " + str(output_dir))
 
-    # Quick test / demo example for the plantuml diagram
-    print("Creating plantuml file and generating diagram from yaml...")
-    diagram = Plantuml_Writer.create_plantuml(file_test, destination)
-
     # Will give a message if no arguments were provided.
     if len(sys.argv) == 1:
-        print("No args specified in command. Add the file name(s) after 'run_report.py' to specify the reports you want to run.")
-
+        print(
+            "No args specified in command. Add the file name(s) after 'run_report.py' to specify the reports you want to run."
+        )

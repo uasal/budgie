@@ -19,7 +19,6 @@ class TestWaveFrontError(TestCase):
         filename = TEST_SUPPORT_DATA_DIR.joinpath("test_budget.yaml")
 
         # load the class
-        wfe_class = WaveFrontError()
+        wfe_class = WaveFrontError(filename)
 
         total_cbe, total_spec, total_allocation = wfe_class.calc_total_wfe()
-

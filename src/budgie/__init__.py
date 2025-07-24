@@ -1,5 +1,5 @@
-#from importlib.metadata import PackageNotFoundError, version
-#import sys
+# from importlib.metadata import PackageNotFoundError, version
+# import sys
 from budgie.version import __version__
 
 from budgie.core import (
@@ -12,10 +12,6 @@ from budgie.core import (
     set_directory,
 )
 
-from budgie.core.tests import (
-    TestBudgets,
-    TestWaveFrontError,
-)
 __project__ = "budgie"
 
 

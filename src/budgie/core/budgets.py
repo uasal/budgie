@@ -6,7 +6,7 @@ import yaml
 
 
 def set_directory(budget_dir):
-    """"Sets Budget Data Path for all budgets"""
+    """ "Sets Budget Data Path for all budgets"""
     global BUDGET_DATA_DIR
     BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath(budget_dir)
 
@@ -126,9 +126,9 @@ class Budget(metaclass=ABCMeta):
             if isinstance(v, dict):
                 for k2, v2 in v.items():
                     if k2 == "cbe":
-                        ss_cbe += v2 ** 2
+                        ss_cbe += v2**2
                     elif k2 == "spec":
-                        ss_spec += v2 ** 2
+                        ss_spec += v2**2
         return (np.sqrt(ss_spec), np.sqrt(ss_cbe))
 
     def sum_values(self, values):
@@ -150,7 +150,7 @@ class Budget(metaclass=ABCMeta):
         )
 
     def run_report(self, output_dir):
-        """ Runs report for budget and outputs to the specified directory.
+        """Runs report for budget and outputs to the specified directory.
         :param output_dir: string to output directory path
         """
         # This will change depending on budget / subclasses
