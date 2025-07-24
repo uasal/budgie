@@ -18,12 +18,16 @@ if __name__ == "__main__":
         # Set the appropriate data directory and output directory based on the input file
         # If no path data is given then it assumes the files are in the budgie repo
         if len(budget_name.parents) == 1:
-            set_directory(Path(__file__).parents[1].joinpath("data"))
-            output_dir = Path(__file__).parents[1].joinpath("reports")
-        else:
-            # Assume same structure (as in gitlab) but derive from path
+            # Assumes only a filename was given
             set_directory(Path(budget_name).parents[1].joinpath("data"))
             output_dir = Path(budget_name).parents[1].joinpath("reports")
+        else:
+            # A path to a file is provided
+            # Assume same structure (as in gitlab) but derive from path
+            set_directory(budget_name.parent)
+            # FIXME: modify to output directory which should be an argument.
+            # Right now it assumes a similar format with a reports folder
+            output_dir = budget_name.parents[2].joinpath("reports")
 
 
         # Determine budget subclass based on the name of file

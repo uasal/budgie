@@ -6,7 +6,7 @@ from pprint import pprint
 import math
 
 import numpy as np
-import pprint
+import yaml
 
 from budgie.core import Budget, find_vals
 from budgie.version import __version__
@@ -45,7 +45,7 @@ class WaveFrontError(Budget):
         gen = (i**2 for i in vals)
         total_allocation = np.sqrt(np.sum(np.fromiter(gen,dtype=float)))
 
-        return total_cbe, total_spec, total_allocation
+        return float(total_cbe), float(total_spec), float(total_allocation)
 
     def run_report(self, output_dir):
         """ Runs report for budget and outputs to the specified directory.
@@ -55,8 +55,8 @@ class WaveFrontError(Budget):
         # needs to be in every budget class.
         path = output_dir.joinpath("wfe-report.md")
         report_title = "# Wavefront Error Report\n\n"
-        yaml = pprint.pformat(self.wfe.budget)
-        report_budget = f"## [WFE Yaml Reference]({YAML_LOC})\n\n```yaml\n {yaml} \n```\n"
+        yaml_out = yaml.safe_dump(self.wfe.budget) 
+        report_budget = f"## [WFE Yaml Reference]({YAML_LOC})\n\n```yaml\n {yaml_out} \n```\n"
         version = f"**Version:** _{__version__}_\n\n" 
         report_results = "## WFE Report Results\n\n"
         end = "\n"
@@ -81,5 +81,12 @@ class WaveFrontError(Budget):
 
         with open(path, "w+", encoding="utf-8", newline=end) as f:
             f.write(report)
+
+        # Also write out the budget results only
+        # Write YAML to a file
+        yaml_path = output_dir.joinpath("wfe-report.yaml")
+        with open(yaml_path, 'w') as file:
+            yaml.safe_dump(self.wfe.budget, file, default_flow_style=False, indent=4)
+
 
         print("Report Results Generated. Verify to the reports directory markdown file for the report results.")
