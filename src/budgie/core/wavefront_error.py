@@ -49,7 +49,7 @@ class WaveFrontError(Budget):
         vals = list(find_vals(self.wfe.budget, "allocation"))
         total_allocation = np.sqrt(np.sum(i * i for i in vals))
 
-        return total_cbe, total_spec, total_allocation
+        return float(total_cbe), float(total_spec), float(total_allocation)
 
     def run_report(self, output_dir):
         """Runs report for budget and outputs to the specified directory.
@@ -59,8 +59,8 @@ class WaveFrontError(Budget):
         # needs to be in every budget class.
         path = output_dir.joinpath("wfe-report.md")
         report_title = "# Wavefront Error Report\n\n"
-        yaml_out = pprint.pformat(self.wfe.budget)
-        # yaml_out = yaml.safe_dump(self.wfe.budget) # this fails
+        # yaml_out = pprint.pformat(self.wfe.budget)
+        yaml_out = yaml.safe_dump(self.wfe.budget) 
         report_budget = f"## [WFE Yaml Reference]({self.path_to_yaml.parent})\n\n```yaml\n {yaml_out} \n```\n"
         version = f"**Version:** _{__version__}_\n\n"
         report_results = "## WFE Report Results\n\n"
@@ -101,8 +101,7 @@ class WaveFrontError(Budget):
         # Write YAML to a file
         yaml_path = output_dir.joinpath("wfe-report.yaml")
         with open(yaml_path, 'w') as file:
-            # yaml.safe_dump(self.wfe.budget, file, default_flow_style=False, indent=4) # fails
-            yaml.dump(self.wfe.budget, file, default_flow_style=False, indent=4)
+            yaml.safe_dump(self.wfe.budget, file, default_flow_style=False, indent=4)
 
         # Quick test / demo example for the plantuml diagram
         print("Creating plantuml file and generating diagram from yaml...")
