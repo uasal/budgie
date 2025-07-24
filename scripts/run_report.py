@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # print("Creating plantuml file and generating diagram from yaml...")
     
     # diagram = Plantuml_Writer.create_plantuml(budget_name, output_dir)
-    output_file = output_dir.joinpath(budget_name.stem+'_pl.yaml')
+    output_file = output_dir.joinpath(budget_name.stem+'_plantuml.yaml')
     diagram = Plantuml_Writer.create_plantuml(budget_name, output_file)
 
     # Will give a message if no arguments were provided.

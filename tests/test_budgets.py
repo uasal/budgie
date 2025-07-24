@@ -16,7 +16,7 @@ class TestBudgets(TestCase):
     def test_calc_margins(self):
         """Tests."""
 
-        filename = "test_budget.yaml"
+        filename = "test_wfe_budget.yaml"
         test_bud = Budget(filename)
         margins = test_bud.calc_margins()
 

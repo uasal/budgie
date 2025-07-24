@@ -71,15 +71,38 @@ class ScatteredLight(Budget):
         logger.info(summary)
 
         # Declare fov's as tuples
-        # FIXME - get Lazuli FoV!!!
-        # Using values from Pearl white paper
-        logger.warning("FOV is hardcoded!")
-        # From Max: FoV size - +/- 0.27 degrees in X, and -0.15 to 0.075
-        self.x_center = 0.0 * u.Unit('deg')
-        self.y_center = (-0.15+0.075)/2 * u.Unit('deg')
-        self.x_fov = 0.27*2 * u.Unit('deg')  # [degrees]
-        self.y_fov = (0.075+0.150) * u.Unit('deg')  # [degrees]
+        # should be ~4.5836 arcseconds/mm = ~0.00127 degrees/mm
+        #
+        self.plate_scale = (1e-3 * u.Unit('m') / u.Quantity(config['telescope']['general']['f_eff'])) * (180 * u.Unit('deg')/np.pi) / u.Unit('mm')
+        # Get pupil area
+        # note the 0.5's because the diameters are in the configs and not radii
+        self.pupil_area = np.pi * ((0.5*u.Quantity(config['telescope']['optics']['m1']['aper_clear_OD']))**2) - np.pi*((0.5*u.Quantity(config['telescope']['optics']['m1']['aper_clear_ID']))**2)
 
+        self.x_center = u.Quantity(self.scattered.budget['inputs']['pst_file']['x_center'])
+        # self.y_center = (-0.15+0.075)/2 * u.Unit('deg')
+        self.y_center = u.Quantity(self.scattered.budget['inputs']['pst_file']['y_center'])
+        self.x_fov = u.Quantity(self.scattered.budget['inputs']['pst_file']['x_fov']) * self.plate_scale  # [degrees]
+        self.y_fov = u.Quantity(self.scattered.budget['inputs']['pst_file']['y_fov']) * self.plate_scale  # [degrees]
+
+        # Read in PST data (theta and power in y and x dims)
+        # Output is in W at the focal plane
+
+        # Note that the filename is relative to the budget location
+        pst_file = Path(self.scattered.budget_dir).joinpath(
+            self.scattered.budget["inputs"]["pst_file"]["value"]
+        )
+
+        file_type = self.scattered.budget["inputs"]["pst_file"]["file_type"]
+        _theta_y, _pst_y, _theta_x, _pst_x = self.read_pst(pst_file, file_type=file_type)
+
+        # Declare PSTs for the class
+        self.theta_x = np.array(_theta_x, dtype=float)
+        self.pst_x = np.array(_pst_x, dtype=float)
+
+        self.theta_y = np.array(_theta_y, dtype=float)
+        self.pst_y = np.array(_pst_y, dtype=float)
+
+        # The following should probably come from the astrophysics.toml file.
         # vega V flux from https://www.gemini.edu/observing/resources/magnitudes-and-fluxes (3.68E-08 W/m2/um)
         # Multiply by 540nm (Johnson V-band central wavelength https://en.wikipedia.org/wiki/Photometric_system)
         _vega_flux = 3.68e-08 * u.Unit('W/(m2 um)')
@@ -90,15 +113,11 @@ class ScatteredLight(Budget):
         logger.debug(f"{self.vega_flux["V"]=:0.3e}")
         self.vega_mag = {"V": 0}  # setting incase of zero point offsets.
 
-        # Get pupil area
-        # note the 0.5's because the diameters are in the configs and not radii
-        self.pupil_area = np.pi * ((0.5*u.Quantity(config['telescope']['optics']['m1']['aper_clear_OD']))**2) - np.pi*((0.5*u.Quantity(config['telescope']['optics']['m1']['aper_clear_ID']))**2)
-
     def plot_pst(self, theta, pst, title, color, label, xlim=None, ylim=None):
         # determine range
         if xlim is None:
-            xmax = np.nanmax(theta[pst.value > 1e-8].value)
-            xmin = np.nanmin(theta[pst.value > 1e-8].value)
+            xmax = np.nanmax(theta[pst > 1e-8])
+            xmin = np.nanmin(theta[pst > 1e-8])
             xlim = (xmin, xmax)
         if ylim is None:
             ymax = 2
@@ -106,7 +125,7 @@ class ScatteredLight(Budget):
             ylim = (ymin, ymax)
 
         plt.figure(figsize=(8, 5))
-        plt.plot(theta.value, pst.value, marker="o", linestyle="-", color=color, label=label)
+        plt.plot(theta, pst, marker="o", linestyle="-", color=color, label=label)
         plt.xlim(xlim)
         plt.ylim(ylim)
         plt.yscale("log")
@@ -122,42 +141,24 @@ class ScatteredLight(Budget):
         # Method that is called by a generic script
         # needs to be in every budget class.
 
-        # Read in PST data (theta and power in y and x dims)
-        # Output is in W/m2 at the focal plane
-
-        # Note that the filename is relative to the budget location
-        pst_file = Path(self.scattered.budget_dir).joinpath(
-            self.scattered.budget["inputs"]["pst_file"]["value"]
-        )
-
-        file_type = self.scattered.budget["inputs"]["pst_file"]["file_type"]
-        theta_y, pst_y, theta_x, pst_x = self.read_pst(pst_file, file_type=file_type)
-
 
         # # Plot normalized PST X data
         self.plot_pst(
-            theta_x,
-            pst_x,
+            self.theta_x,
+            self.pst_x,
             r"Normalized PST for $\theta_x$ (Full Field)",
             "r",
             "Normalized PST X Full Range",
         )
         self.plot_pst(
-            theta_y,
-            pst_y,
+            self.theta_y,
+            self.pst_y,
             r"Normalized PST for $\theta_y$ (Full Field)",
             "r",
             "Normalized PST Y Full Range",
         )
         plt.show()
 
-        # Declare PSTs for the class
-
-        self.theta_x = np.array(theta_x, dtype=float)
-        self.pst_x = np.array(pst_x, dtype=float)
-
-        self.theta_y = np.array(theta_y, dtype=float)
-        self.pst_y = np.array(pst_y, dtype=float)
 
         ###################################################
         # Estimate sky coverage based on the brightness of 
@@ -173,7 +174,7 @@ class ScatteredLight(Budget):
         # as measured at the WCC focal plane (L3-0011) shall not exceed 1 zodi
         # over 90% of the sky outside of the galactic thick disc."
 
-        zodi_arr = np.arange(-5, 5, 0.1)
+        zodi_arr = np.arange(1e-2, 5, 0.01) # number of zodis
         surf_fluxes, surface_mags = self.zodi_to_surf_flux(zodi_arr)
 
         # Want to be able to specify a list of magnitudes and
@@ -181,8 +182,9 @@ class ScatteredLight(Budget):
         # Start by developing the relationship between
 
         # Only in the x-axis for now
-        stellar_mags = [3.0, 9.0]
-        separations_xy = [(0.3, 0.0), (0.4, 0.0)]
+        stellar_mags = [4.0]#, 9.0]
+        separations_xy = [(0.51, 0.0),]# (0.4, 0.0)]
+
         total_flux, zodis, surface_mag = self.calc_surface_flux(
             stellar_mags, separations_xy
         )
@@ -236,12 +238,14 @@ class ScatteredLight(Budget):
         return theta_y, pst_y, theta_x, pst_x
 
     def read_pst_fred(self, filename, axis=None, file_type=None):
-        """Reads a PST file generated by FRED in excel (xlsx) format and extract into a pandas dataframe.
+        """Reads a PST file generated by FRED in excel (xlsx) format and extract into a numpy array.
         Needs to be called for each axis.
 
-        Note that the power in the spreadsheet is in W/m2 as measured at the focal plane.
+        Note that the power in the spreadsheet is in W as measured at the focal plane.
         This is normalized by the power incident on the entrance aperture so that
         on-axis (and in field), the PST value will effectively be the throughput.
+
+        We do not use the ratio value in the spreadsheet as it does not have the area correction in it.ß
 
         Output is therefore unitless.
 
@@ -257,9 +261,9 @@ class ScatteredLight(Budget):
         Returns:
         --------
         pst_y: array
-            PST of y-axis [W/m2] but normalized by the value at the center of the field.
+            PST of y-axis [W] but normalized by the value at the center of the field.
         pst_x: array
-            PST of x-axis [W/m2] but normalized by the value at the center of the field.
+            PST of x-axis [W] but normalized by the value at the center of the field.
 
         """
 
@@ -283,8 +287,8 @@ class ScatteredLight(Budget):
         # Revert to numpy arrays:
         if file_type == 'fred_xlsx_v2':
             theta = pst_df['Angle'].to_numpy(dtype=float) *u.Unit('deg')
-            pst = pst_df['Power at Detector aka PST (P_d)'].to_numpy(dtype=float) *u.Unit('W / m2')
-            incident_power = pst_df['Power at First Vane (P_1)'].to_numpy(dtype=float)*u.Unit('W / m2')
+            pst = pst_df['Power at Detector aka PST (P_d)'].to_numpy(dtype=float) *u.Unit('W')
+            incident_power = pst_df['Power at First Vane (P_1)'].to_numpy(dtype=float)*u.Unit('W')
             incident_area = pst_df['Projected Area Size of First Vane (A_1)'].to_numpy(dtype=float) *u.Unit('mm2')
         else:
             raise OSError('Only file_type of fred_xlsx_v2 is supported.')
@@ -329,11 +333,12 @@ class ScatteredLight(Budget):
             raise ValueError("Only a wavelength of 540e-9m is currently supported.")
 
         # From HST - high background (22.1 mag/sq arcsec) - defined as the earth-shine at 38° - https://hst-docs.stsci.edu/wfc3ihb/chapter-9-wfc3-exposure-time-calculation/9-7-sky-background#id-9.7SkyBackground-table9.4
+        # at 5500, this corresponds to 5.17E-18
 
         # Table 9.4 has 22.1 at ecliptic long = 45, lat = 30, also at 180,0
         # Then table 1 in the Levasseur paper puts that position at 195 S10.
 
-        # From the hubble paper
+        # From the hubble paper site
         # 5.17E-18 ergcm−2 s−1 Å−1 arcsec−2
         # 10^7 ergs/ Joule
         zodi_flux1 = (5.17e-18 / 1e7 * (100**2) * 5500)*u.Unit('W / (m2 arcsec2)')  # W/m2/arcsec2 at 0.55um, which is 2.84e-17 W/ (arcsec2 m2)
@@ -390,44 +395,51 @@ class ScatteredLight(Budget):
             star_theta = separations[i]
             logger.debug(f"{i=},{mag=}, {star_theta=}\n")
             # project to x and y
-            # Need to think about how to do this
+            # Need to think about how to do this in 2d
             # FIXME: Just use X right now
             logger.warning("Using X-PST only for determining flux on focal plane.")
             star_theta_x = star_theta[0]  # * np.cos(star_phi[i])
             star_theta_y = star_theta[1]  # * np.sin(star_phi[i])
 
-            star_flux_at_M1 = (
+            star_flux_density_at_M1 = (
                 10 ** (-(mag - self.vega_mag["V"]) / 2.5) * self.vega_flux["V"]
             )  # W/m2
-            logger.debug(f"{star_flux_at_M1=:0.3e} [W/m2]\n")
+            logger.debug(f"{star_flux_density_at_M1=:0.3e} [W/m2]\n")
 
             # interpolate PST to input angle
             star_pst_x = np.interp(star_theta_x, self.theta_x, self.pst_x)
             star_pst_y = np.interp(star_theta_y, self.theta_y, self.pst_y)
 
-            # This doesn't work, should it be an average?
+            # How to combine y and x? Should it be an average?
             # FIXME: Get assistance with PST definition
-
             # star_pst.append(np.sqrt(star_pst_x**2 + star_pst_y**2))
             # star_pst.append((star_pst_x + star_pst_y)/2.0)
+
             star_pst.append(star_pst_x)
 
             logger.debug(f"{star_pst_x=:0.3e},{star_pst_y=:0.3e},{star_pst[i]=:0.3e}\n")
 
-            star_flux_per_WCC = star_flux_at_M1 * star_pst[i]  # W/m2/FoV
+            # PST is the ratio of intensity at the entrance pupil (watts) to
+            # intensity at the focal plane (watts)
+            star_flux_per_WCC = star_flux_density_at_M1 *self.pupil_area* star_pst[i]  # W/FoV
 
             fov_arcsec = (self.x_fov * self.y_fov).to('arcsec2') # degrees to arcseconds
-            star_flux_at_WCC = star_flux_per_WCC / (fov_arcsec)  # W/m2/arcsec
+            star_flux_at_WCC = star_flux_per_WCC / (fov_arcsec)  # W/arcsec
             logger.debug(f"{i=},{mag=:0.2f},{star_flux_at_WCC=:0.3e}\n")
 
             total_flux += star_flux_at_WCC
 
         # Now calculate in zodi's and surface flux
         # What is the surface flux at each zodi?
-        zodis = total_flux / self.zodi_flux
+
+        zodi_flux_at_WCC = (self.zodi_flux*self.pupil_area)
+
+        zodis = total_flux / zodi_flux_at_WCC
+
+        logger.info(f'Total flux is {total_flux:0.2e}, which corresponds to {zodis:0.2f} zodis.')
 
         # flux/arcsec^2
         # Convert the total flux to an effective magnitude, using the standard flux of 22.1 mag/arcsec^2 per the zodi flux
-        surface_mag = -2.5 * np.log10(total_flux / self.zodi_flux) + 22.1
+        surface_mag = -2.5 * np.log10(total_flux / zodi_flux_at_WCC) + 22.1
 
         return total_flux, zodis, surface_mag

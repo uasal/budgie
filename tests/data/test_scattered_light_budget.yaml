@@ -1,0 +1,17 @@
+name: "UM Mission Test Scattered Light Budget"
+description: "Calculates sky coverage for a given model"
+units: "unitless"
+requirement: 0.90 # sky coverage
+project: "um"
+
+inputs:
+  description: "Example budget for testing purposes"
+  pst_file:
+    description: "File containing the UM PST data from Max. Max states that FoV size - +/- 0.27 degrees in X, and -0.15 to 0.075"
+    value: "lazuli_pst_v2.xlsx"
+    file_type: "fred_xlsx_v2"
+    x_center: "-0.0375deg"
+    y_center: "0deg"
+    y_fov: "396.28mm" # gets converted to degrees
+    x_fov: "165.2mm" # gets converted to degrees
+

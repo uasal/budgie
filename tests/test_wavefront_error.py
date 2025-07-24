@@ -14,7 +14,7 @@ set_directory(Path(__file__).parents[1].joinpath("tests/data"))
 def test_calc_total():
     """Tests."""
 
-    filename = "test_budget.yaml"
+    filename = "test_wfe_budget.yaml"
 
     # load the class
     wfe_class = WaveFrontError(filename)
