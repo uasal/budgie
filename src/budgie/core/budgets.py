@@ -19,7 +19,7 @@ def find_vals(d, key):
     if isinstance(d, dict):
         for k, v in d.items():
             if k == key:
-                print(f"{key=}, {v=}")
+                # print(f"{key=}, {v=}")
                 yield v
             else:
                 yield from find_vals(v, key)
@@ -129,7 +129,7 @@ class Budget(metaclass=ABCMeta):
                         ss_cbe += v2 ** 2
                     elif k2 == "spec":
                         ss_spec += v2 ** 2
-        return (np.sqrt(ss_spec), np.sqrt(ss_cbe))
+        return (float(np.sqrt(ss_spec)), float(np.sqrt(ss_cbe)))
 
     def sum_values(self, values):
         """Finds values associated with an allocation.
@@ -145,8 +145,8 @@ class Budget(metaclass=ABCMeta):
                         ss_spec += v2
 
         return (
-            np.sum(ss_spec),
-            np.sum(ss_cbe),
+            float(np.sum(ss_spec)),
+            float(np.sum(ss_cbe)),
         )
 
     def run_report(self, output_dir):

@@ -1,34 +1,46 @@
 import sys
 from pathlib import Path
-from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
+from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer, ScatteredLight
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
 destination = "diagrams/test_plantuml.yaml"
-
-# Sets the budget data path for looking up any budget yaml files and reports output directory.
-set_directory(Path(__file__).parents[1].joinpath("data"))
-output_dir = Path(__file__).parents[1].joinpath("reports")
-print('Grabbing yaml file(s) for running report...')
-print("Argument list collected: ", sys.argv)
-args = 1
 
 
 # Running reports
 if __name__ == "__main__":
     print("Starting run_report script...")
     # Run throw all the positions of args collected and stop before it reaches the end.
+    args=1
     while args < len(sys.argv):
-        budget_name = sys.argv[args]
-        # Determine budget subclass based on the name of file
-        if budget_name == "wavefront_error.yaml":
-            budget = WaveFrontError()
-        elif budget_name == "mission_lifetime.yaml":
-            budget = MissionLifetime()
-        elif budget_name == "transient_response.yaml":
-            budget = TransientResponse()
+        budget_name = Path(sys.argv[args])
+
+        # Set the appropriate data directory and output directory based on the input file
+        # If no path data is given then it assumes the files are in the budgie repo
+        if len(budget_name.parents) == 1:
+            # Assumes only a filename was given
+            set_directory(Path(budget_name).parents[1].joinpath("data"))
+            output_dir = Path(budget_name).parents[1].joinpath("reports")
         else:
-            raise LookupError(f"Cannot find {budget_name}")
+            # A path to a file is provided
+            # Assume same structure (as in gitlab) but derive from path
+            set_directory(budget_name.parent)
+            # FIXME: modify to output directory which should be an argument.
+            # Right now it assumes a similar format with a reports folder
+            output_dir = budget_name.parents[2].joinpath("reports")
+
+
+        # Determine budget subclass based on the name of file
+        if "wavefront_error.yaml" in str(budget_name).lower():
+            budget = WaveFrontError(budget_name)
+        elif "mission_lifetime.yaml" in str(budget_name).lower():
+            budget = MissionLifetime(budget_name)
+        elif "transient_response.yaml" in str(budget_name).lower():
+            budget = TransientResponse(budget_name)
+        elif "scattered" in str(budget_name).lower():
+            budget = ScatteredLight(budget_name)
+        else:
+            raise LookupError(f"Cannot find a budget that is associable with {budget_name}")
         # Increment args
         args = args + 1
         # Perform calculations for budget(s) and generates an output markdown file with results.
@@ -36,8 +48,12 @@ if __name__ == "__main__":
         print("Budget Report Results printed to: " + str(output_dir))
 
     # Quick test / demo example for the plantuml diagram
-    print("Creating plantuml file and generating diagram from yaml...")
-    diagram = Plantuml_Writer.create_plantuml(file_test, destination)
+    # FIXME: bug below somewhere
+    # print("Creating plantuml file and generating diagram from yaml...")
+    
+    # diagram = Plantuml_Writer.create_plantuml(budget_name, output_dir)
+    output_file = output_dir.joinpath(budget_name.stem+'_plantuml.yaml')
+    diagram = Plantuml_Writer.create_plantuml(budget_name, output_file)
 
     # Will give a message if no arguments were provided.
     if len(sys.argv) == 1:

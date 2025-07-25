@@ -8,16 +8,12 @@ from budgie.core import (
     WaveFrontError,
     Budget,
     Plantuml_Writer,
+    ScatteredLight,
     find_vals,
     set_directory,
 )
 
-from budgie.core.tests import (
-    TestBudgets,
-    TestWaveFrontError,
-)
 __project__ = "budgie"
-
 
 CLI = "budgie"
 VERSION = "{0} v{1}".format(__project__, __version__)
