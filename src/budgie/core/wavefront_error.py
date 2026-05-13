@@ -12,7 +12,10 @@ from budgie.core import Budget, find_vals
 try:
     from budgie.version import __version__
 except ImportError:  # pragma: no cover - fallback for source/editable imports
-    from budgie import __version__
+    try:
+        from budgie import __version__
+    except (ImportError, AttributeError):  # pragma: no cover - final fallback
+        __version__ = "0+unknown"
 
 NAME = "wavefront_error.yaml"
 YAML_LOC = f"../data/{NAME}"
