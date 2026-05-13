@@ -52,9 +52,9 @@ def _scalar_multiply(values: list[float], *, factor: float | None = None, **_: A
     if not values:
         raise BudgetTreeError("scalar_multiply requires at least one child value.")
     if factor is None:
-        if len(values) == 1:
-            return values[0]
-        return _product(values)
+        raise BudgetTreeError("scalar_multiply requires a factor.")
+    if len(values) != 1:
+        raise BudgetTreeError("scalar_multiply requires exactly one child value.")
     return values[0] * factor
 
 
