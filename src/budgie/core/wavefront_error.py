@@ -11,7 +11,7 @@ import pprint
 from budgie.core import Budget, find_vals
 try:
     from budgie.version import __version__
-except ModuleNotFoundError:  # pragma: no cover - fallback for source/editable imports
+except ImportError:  # pragma: no cover - fallback for source/editable imports
     from budgie import __version__
 
 NAME = "wavefront_error.yaml"

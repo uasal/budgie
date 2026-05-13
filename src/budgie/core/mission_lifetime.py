@@ -9,7 +9,7 @@ import pprint
 import numpy as np
 try:
     from budgie.version import __version__
-except ModuleNotFoundError:  # pragma: no cover - fallback for source/editable imports
+except ImportError:  # pragma: no cover - fallback for source/editable imports
     from budgie import __version__
 
 NAME = "mission_lifetime.yaml"
