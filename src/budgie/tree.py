@@ -123,8 +123,9 @@ def _coerce_table_records(table: Any) -> list[dict[str, Any]]:
 def _resolve_table_and_config(
     budget_or_table: Any,
     config: dict[str, Any] | None,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, str] | None]:
     derived_config = config or {}
+    adapter_field_map = None
     if hasattr(budget_or_table, "get_pandas_table"):
         table = budget_or_table.get_pandas_table()
         if not derived_config:
@@ -132,9 +133,21 @@ def _resolve_table_and_config(
                 derived_config = budget_or_table.budget
             elif hasattr(budget_or_table, "config") and isinstance(budget_or_table.config, dict):
                 derived_config = budget_or_table.config
+        records = _coerce_table_records(table)
+        if records:
+            columns = set(records[0].keys())
+            inferred_cbe = next((column for column in columns if str(column).endswith(" CBE")), None)
+            inferred_allocation = (
+                f"{str(inferred_cbe)[:-4]} Allocation"
+                if inferred_cbe and f"{str(inferred_cbe)[:-4]} Allocation" in columns
+                else None
+            )
+            if inferred_cbe and inferred_allocation and "Type" in columns:
+                adapter_field_map = {"cbe": inferred_cbe, "allocation": inferred_allocation, "type": "Type"}
+        return records, derived_config, adapter_field_map
     else:
         table = budget_or_table
-    return _coerce_table_records(table), derived_config
+    return _coerce_table_records(table), derived_config, adapter_field_map
 
 
 def _resolve_factor(step: dict[str, Any], config: dict[str, Any], scalars: dict[str, Any] | None) -> float:
@@ -196,6 +209,7 @@ def build_tree(
     budget_or_table: Any,
     *,
     config: dict[str, Any] | None = None,
+    field_map: dict[str, str] | None = None,
     category_combine_ops: dict[str, str] | None = None,
     default_category_combine_op: str = "rss",
     post_processing_chain: list[dict[str, Any]] | None = None,
@@ -203,31 +217,52 @@ def build_tree(
 ) -> BudgetNode:
     """Build a hierarchical budget tree from tabular terms and explicit chain config.
 
-    Expected table columns: Contrast Allocation, Contrast CBE, Type, Description, CBE Trace.
+    By default, expected table columns are CBE, Allocation, and Type. Additional
+    columns are optional metadata copied into ``BudgetNode.metadata``.
+
+    Use ``field_map`` (or ``config['field_map']``) to map these generic concepts
+    to budget-specific column names.
     """
     if isinstance(budget_or_table, BudgetNode):
         return budget_or_table
 
-    records, derived_config = _resolve_table_and_config(budget_or_table, config)
+    records, derived_config, adapter_field_map = _resolve_table_and_config(budget_or_table, config)
     chain = post_processing_chain or derived_config.get("post_processing_chain")
     if not chain:
         raise BudgetTreeError(_format_schema_error())
 
-    required_columns = ("Contrast Allocation", "Contrast CBE", "Type", "Description", "CBE Trace")
-    for column in required_columns:
+    effective_field_map = {"cbe": "CBE", "allocation": "Allocation", "type": "Type"}
+    if adapter_field_map:
+        effective_field_map.update(adapter_field_map)
+    config_field_map = derived_config.get("field_map")
+    if isinstance(config_field_map, dict):
+        effective_field_map.update(config_field_map)
+    if field_map:
+        effective_field_map.update(field_map)
+
+    required_field_keys = ("cbe", "allocation", "type")
+    for key in required_field_keys:
+        if key not in effective_field_map or not effective_field_map[key]:
+            raise BudgetTreeError(f"Missing required field_map entry '{key}'.")
+
+    for key in required_field_keys:
+        column = effective_field_map[key]
         if not records or column not in records[0]:
-            raise BudgetTreeError(f"Missing required table column '{column}'.")
+            raise BudgetTreeError(f"Missing required table column '{column}' mapped from '{key}'.")
 
     grouped: dict[str, list[BudgetNode]] = {}
+    cbe_column = effective_field_map["cbe"]
+    allocation_column = effective_field_map["allocation"]
+    type_column = effective_field_map["type"]
     for record in records:
         node = BudgetNode(
             name=_leaf_name(record),
-            value=float(record["Contrast CBE"]) if record["Contrast CBE"] is not None else None,
-            allocation=float(record["Contrast Allocation"]) if record["Contrast Allocation"] is not None else None,
+            value=float(record[cbe_column]) if record[cbe_column] is not None else None,
+            allocation=float(record[allocation_column]) if record[allocation_column] is not None else None,
             kind="leaf",
             metadata=dict(record),
         )
-        type_value = str(record.get("Type", "Uncategorized"))
+        type_value = str(record.get(type_column, "Uncategorized"))
         grouped.setdefault(type_value, []).append(node)
 
     category_nodes: list[BudgetNode] = []
@@ -503,6 +538,7 @@ def display_tree(
     show: str = "both",
     standalone: bool = True,
     config: dict[str, Any] | None = None,
+    field_map: dict[str, str] | None = None,
     post_processing_chain: list[dict[str, Any]] | None = None,
     scalars: dict[str, Any] | None = None,
 ) -> Any:
@@ -510,6 +546,7 @@ def display_tree(
     node = budget_or_node if isinstance(budget_or_node, BudgetNode) else build_tree(
         budget_or_node,
         config=config,
+        field_map=field_map,
         post_processing_chain=post_processing_chain,
         scalars=scalars,
     )

@@ -14,32 +14,32 @@ def _sample_table() -> pd.DataFrame:
         [
             {
                 "Name": "coherent_1",
-                "Contrast Allocation": 4.0e-9,
-                "Contrast CBE": 3.0e-9,
+                "Allocation": 4.0e-9,
+                "CBE": 3.0e-9,
                 "Type": "Static, Coherent",
                 "Description": "first coherent term",
                 "CBE Trace": "trace-a",
             },
             {
                 "Name": "coherent_2",
-                "Contrast Allocation": 4.0e-9,
-                "Contrast CBE": 4.0e-9,
+                "Allocation": 4.0e-9,
+                "CBE": 4.0e-9,
                 "Type": "Static, Coherent",
                 "Description": "second coherent term",
                 "CBE Trace": "trace-b",
             },
             {
                 "Name": "incoherent_1",
-                "Contrast Allocation": 0.5e-9,
-                "Contrast CBE": 1.0e-9,
+                "Allocation": 0.5e-9,
+                "CBE": 1.0e-9,
                 "Type": "Static, Incoherent",
                 "Description": "incoherent term",
                 "CBE Trace": "trace-c",
             },
             {
                 "Name": "dynamic_1",
-                "Contrast Allocation": 2.0e-9,
-                "Contrast CBE": 2.0e-9,
+                "Allocation": 2.0e-9,
+                "CBE": 2.0e-9,
                 "Type": "Dynamic",
                 "Description": "dynamic term",
                 "CBE Trace": "trace-d",
@@ -52,14 +52,14 @@ def _sample_config() -> dict:
     return {
         "pp_gain": 0.1,
         "post_processing_chain": [
-            {"op": "rss", "label": "Total raw contrast", "op_label": "RSS"},
+            {"op": "rss", "label": "Total raw value", "op_label": "RSS"},
             {
                 "op": "scalar_multiply",
                 "factor_key": "pp_gain",
-                "label": "Post-processed contrast",
+                "label": "Post-processed value",
                 "op_label": r"$\times g_{pp}$",
             },
-            {"op": "scalar_multiply", "factor": 5, "label": "5σ Post-processed contrast", "op_label": "5×"},
+            {"op": "scalar_multiply", "factor": 5, "label": "5σ Post-processed value", "op_label": "5×"},
         ],
     }
 
@@ -93,7 +93,7 @@ class TestTreeRendering(TestCase):
         message = str(ctx.exception)
         self.assertIn("post_processing_chain", message)
         self.assertIn("<combine_op>", message)
-        self.assertNotIn("Total raw contrast", message)
+        self.assertNotIn("Total raw value", message)
 
     def test_new_type_auto_generates_style(self):
         table = _sample_table()
@@ -104,8 +104,8 @@ class TestTreeRendering(TestCase):
                     [
                         {
                             "Name": "new_type_leaf",
-                            "Contrast Allocation": 1.0e-9,
-                            "Contrast CBE": 0.8e-9,
+                            "Allocation": 1.0e-9,
+                            "CBE": 0.8e-9,
                             "Type": "New Type",
                             "Description": "new type term",
                             "CBE Trace": "trace-z",
@@ -118,6 +118,51 @@ class TestTreeRendering(TestCase):
         node = build_tree(table, config=_sample_config())
         tikz = render_tikz(node, standalone=False)
         self.assertIn("type_new_type/.style", tikz)
+
+    def test_field_map_supports_legacy_column_names(self):
+        generic_node = build_tree(_sample_table(), config=_sample_config())
+        legacy_table = _sample_table().rename(
+            columns={"CBE": "Contrast CBE", "Allocation": "Contrast Allocation"}
+        )
+        mapped_node = build_tree(
+            legacy_table,
+            config=_sample_config(),
+            field_map={"cbe": "Contrast CBE", "allocation": "Contrast Allocation", "type": "Type"},
+        )
+        self.assertEqual(render_ascii(mapped_node, show="both"), render_ascii(generic_node, show="both"))
+
+    def test_adapter_auto_maps_suffix_cbe_allocation_columns(self):
+        generic_node = build_tree(_sample_table(), config=_sample_config())
+        legacy_table = _sample_table().rename(
+            columns={"CBE": "Contrast CBE", "Allocation": "Contrast Allocation"}
+        )
+
+        class _LegacyBudgetLike:
+            def __init__(self, table, config):
+                self._table = table
+                self.budget = config
+
+            def get_pandas_table(self):
+                return self._table
+
+        mapped_node = build_tree(_LegacyBudgetLike(legacy_table, _sample_config()))
+        self.assertEqual(render_ascii(mapped_node, show="both"), render_ascii(generic_node, show="both"))
+
+    def test_field_map_from_config(self):
+        generic_node = build_tree(_sample_table(), config=_sample_config())
+        legacy_table = _sample_table().rename(
+            columns={"CBE": "Contrast CBE", "Allocation": "Contrast Allocation"}
+        )
+        config = dict(_sample_config())
+        config["field_map"] = {"cbe": "Contrast CBE", "allocation": "Contrast Allocation", "type": "Type"}
+        mapped_node = build_tree(legacy_table, config=config)
+        self.assertEqual(render_ascii(mapped_node, show="both"), render_ascii(generic_node, show="both"))
+
+    def test_only_generic_required_columns(self):
+        minimal_table = _sample_table()[["Name", "Allocation", "CBE", "Type"]]
+        node = build_tree(minimal_table, config=_sample_config())
+        self.assertIsNotNone(node.value)
+        self.assertIsNotNone(node.allocation)
 
     def test_custom_combine_op_registration(self):
         def _range(values, **_):
