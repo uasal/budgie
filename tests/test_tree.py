@@ -65,7 +65,9 @@ def _sample_config() -> dict:
 
 
 def _count_edge_labels(node) -> int:
-    count = len(node.children) if node.children and node.op_label else 0
+    count = 0
+    if node.children and node.op_label:
+        count = len(node.children)
     for child in node.children:
         count += _count_edge_labels(child)
     return count
@@ -88,19 +90,33 @@ class TestTreeRendering(TestCase):
         self.assertEqual(tikz.count("edge label={"), _count_edge_labels(node))
 
     def test_requires_post_processing_chain(self):
-        with self.assertRaises(BudgetTreeError):
+        with self.assertRaises(BudgetTreeError) as ctx:
             build_tree(_sample_table(), config={})
+        message = str(ctx.exception)
+        self.assertIn("post_processing_chain", message)
+        self.assertIn("<combine_op>", message)
+        self.assertNotIn("Total raw contrast", message)
 
     def test_new_type_auto_generates_style(self):
         table = _sample_table()
-        table.loc[len(table)] = {
-            "Name": "new_type_leaf",
-            "Contrast Allocation": 1.0e-9,
-            "Contrast CBE": 0.8e-9,
-            "Type": "New Type",
-            "Description": "new type term",
-            "CBE Trace": "trace-z",
-        }
+        table = pd.concat(
+            [
+                table,
+                pd.DataFrame(
+                    [
+                        {
+                            "Name": "new_type_leaf",
+                            "Contrast Allocation": 1.0e-9,
+                            "Contrast CBE": 0.8e-9,
+                            "Type": "New Type",
+                            "Description": "new type term",
+                            "CBE Trace": "trace-z",
+                        }
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
         node = build_tree(table, config=_sample_config())
         tikz = render_tikz(node, standalone=False)
         self.assertIn("type_new_type/.style", tikz)
@@ -118,4 +134,3 @@ class TestTreeRendering(TestCase):
         node = build_tree(_sample_table(), config=config, default_category_combine_op="sum")
         self.assertEqual(node.combine_op, "range")
         self.assertGreater(node.value, 0)
-

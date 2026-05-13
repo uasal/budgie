@@ -63,6 +63,17 @@ def _max(values: list[float], **_: Any) -> float:
 _COMBINE_OPS: dict[str, _CombineOpSpec] = {}
 
 
+def _constant_label(default_label: str) -> Callable[[dict[str, Any]], str]:
+    def label_builder(_: dict[str, Any]) -> str:
+        return default_label
+
+    return label_builder
+
+
+def _scalar_multiply_label(metadata: dict[str, Any]) -> str:
+    return r"$\times " + f"{metadata.get('factor', '?')}" + "$"
+
+
 def register_combine_op(
     name: str,
     func: Callable[..., float],
@@ -72,18 +83,14 @@ def register_combine_op(
     if callable(default_label):
         label_builder = default_label
     else:
-        label_builder = lambda _: default_label
+        label_builder = _constant_label(default_label)
     _COMBINE_OPS[name] = _CombineOpSpec(func=func, label_builder=label_builder)
 
 
 register_combine_op("rss", _rss, r"$\sqrt{\sum c_i^2}$")
 register_combine_op("sum", _sum, r"$\sum$")
 register_combine_op("product", _product, r"$\prod$")
-register_combine_op(
-    "scalar_multiply",
-    _scalar_multiply,
-    lambda metadata: r"$\times " + f"{metadata.get('factor', '?')}" + "$",
-)
+register_combine_op("scalar_multiply", _scalar_multiply, _scalar_multiply_label)
 register_combine_op("max", _max, r"$\max$")
 
 
@@ -91,14 +98,13 @@ def _format_schema_error() -> str:
     return (
         "Missing required 'post_processing_chain'. Expected schema:\n"
         "post_processing_chain:\n"
-        "  - op: rss\n"
-        "    label: \"Total raw contrast\"\n"
-        "  - op: scalar_multiply\n"
-        "    factor_key: pp_gain\n"
-        "    label: \"Post-processed contrast\"\n"
-        "  - op: scalar_multiply\n"
-        "    factor: 5\n"
-        "    label: \"5$\\\\sigma$ post-processed contrast\""
+        "  - op: <combine_op>\n"
+        "    label: <node_label>\n"
+        "    op_label: <edge_label>        # optional\n"
+        "  - op: scalar_multiply           # for scale steps\n"
+        "    factor: <number>              # or use factor_key\n"
+        "    factor_key: <scalar_key>      # optional alternative\n"
+        "    label: <node_label>"
     )
 
 
@@ -286,7 +292,7 @@ def _ascii_value(node: BudgetNode, show: str) -> str:
 
 
 def _ascii_alloc_suffix(node: BudgetNode, show: str) -> str:
-    if show in ("both", "allocation") and node.allocation is not None and show != "allocation":
+    if show == "both" and node.allocation is not None:
         return f" ({_format_number(node.allocation)} alloc)"
     return ""
 
@@ -352,6 +358,20 @@ def _latex_text(text: str) -> str:
     return _latex_escape(text)
 
 
+def _escape_preserving_latex(text: str) -> str:
+    replacements = {
+        "&": r"\&",
+        "%": r"\%",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    return "".join(replacements.get(char, char) for char in text)
+
+
 def _collect_types(node: BudgetNode) -> list[str]:
     types: list[str] = []
 
@@ -385,7 +405,7 @@ def _node_label(node: BudgetNode, show: str) -> str:
     table_lines = []
     for line in lines:
         if "$" in line or "\\" in line:
-            table_lines.append(line)
+            table_lines.append(_escape_preserving_latex(line))
         else:
             table_lines.append(_latex_escape(line))
     return r"\begin{tabular}{l}" + r" \\\\ ".join(table_lines) + r"\end{tabular}"
@@ -481,13 +501,13 @@ def display_tree(
     except Exception:
         return tex
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        tex_path = Path(temp_dir).joinpath("budget_tree.tex")
-        tex_path.write_text(tex, encoding="utf-8")
-        try:
-            pdf_path = compile_to_pdf(tex_path)
-            display(IFrame(src=str(pdf_path), width=900, height=700))
-            return pdf_path
-        except BudgetTreeError:
-            display(Code(tex, language="latex"))
-            return tex
+    temp_dir = Path(tempfile.mkdtemp(prefix="budgie_tree_"))
+    tex_path = temp_dir.joinpath("budget_tree.tex")
+    tex_path.write_text(tex, encoding="utf-8")
+    try:
+        pdf_path = compile_to_pdf(tex_path)
+        display(IFrame(src=str(pdf_path), width=900, height=700))
+        return pdf_path
+    except BudgetTreeError:
+        display(Code(tex, language="latex"))
+        return tex
