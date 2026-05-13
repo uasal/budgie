@@ -151,6 +151,7 @@ def _resolve_factor(step: dict[str, Any], config: dict[str, Any], scalars: dict[
 
 
 def _leaf_name(record: dict[str, Any]) -> str:
+    """Return best-effort leaf display name from common table field names."""
     for key in ("Name", "name", "Term", "term", "index", "Item", "item", "Description"):
         value = record.get(key)
         if value not in (None, ""):
@@ -255,8 +256,16 @@ def build_tree(
             raise BudgetTreeError(f"Unsupported combine_op '{op}' in post_processing_chain.")
 
         step_metadata = dict(step)
-        children = category_nodes if index == 0 else [current]  # type: ignore[list-item]
+        if index == 0:
+            children: list[BudgetNode] = list(category_nodes)
+        else:
+            if current is None:
+                raise BudgetTreeError("post_processing_chain is invalid: missing prior rollup node.")
+            children = [current]
+
         if op == "scalar_multiply":
+            if current is None:
+                raise BudgetTreeError("scalar_multiply cannot be the first post_processing_chain step.")
             factor = _resolve_factor(step, derived_config, scalars)
             step_metadata["factor"] = factor
             scalar_node = BudgetNode(
@@ -266,7 +275,7 @@ def build_tree(
                 kind="scalar",
                 metadata={"Type": "scalar"},
             )
-            children = [scalar_node, current] if current is not None else [scalar_node]  # type: ignore[list-item]
+            children = [scalar_node, current]
 
         node = BudgetNode(
             name=step.get("label", op),
@@ -276,7 +285,7 @@ def build_tree(
             combine_op=op,
             op_label=_build_op_label(op, step_metadata, step.get("op_label")),
             metadata={"Type": step.get("type", "rollup"), **step_metadata},
-            children=[child for child in children if child is not None],  # type: ignore[arg-type]
+            children=children,
         )
         node.value, node.allocation = _compute_node_value(node)
         current = node

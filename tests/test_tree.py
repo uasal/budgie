@@ -89,6 +89,7 @@ class TestTreeRendering(TestCase):
     def test_requires_post_processing_chain(self):
         with self.assertRaises(BudgetTreeError) as ctx:
             build_tree(_sample_table(), config={})
+        self.assertIsInstance(ctx.exception, BudgetTreeError)
         message = str(ctx.exception)
         self.assertIn("post_processing_chain", message)
         self.assertIn("<combine_op>", message)
