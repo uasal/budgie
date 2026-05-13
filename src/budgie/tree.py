@@ -254,8 +254,13 @@ def build_tree(
 
     for key in required_field_keys:
         column = effective_field_map[key]
-        if not records or column not in records[0]:
+        if not records:
             raise BudgetTreeError(f"Missing required table column '{column}' mapped from '{key}'.")
+        for row_index, record in enumerate(records):
+            if column not in record:
+                raise BudgetTreeError(
+                    f"Missing required table column '{column}' mapped from '{key}' in row index {row_index}."
+                )
 
     grouped: dict[str, list[BudgetNode]] = {}
     cbe_column = effective_field_map["cbe"]

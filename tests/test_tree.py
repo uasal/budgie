@@ -180,6 +180,15 @@ class TestTreeRendering(TestCase):
         self.assertNotIn("Description", leaf.metadata)
         self.assertNotIn("CBE Trace", leaf.metadata)
 
+    def test_missing_required_column_in_later_row_raises_clear_error(self):
+        records = _sample_table().to_dict("records")
+        records[1].pop("CBE")
+        with self.assertRaises(BudgetTreeError) as ctx:
+            build_tree(records, config=_sample_config())
+        message = str(ctx.exception)
+        self.assertIn("Missing required table column 'CBE' mapped from 'cbe'", message)
+        self.assertIn("row index 1", message)
+
     def test_custom_combine_op_registration(self):
         def _range(values, **_):
             return max(values) - min(values)
