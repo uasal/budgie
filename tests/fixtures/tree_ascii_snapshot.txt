@@ -1,0 +1,12 @@
+5σ Post-processed contrast ... 2.7e-09 (3.0e-09 alloc)
+├── 5× × 5 ... 5.0e+00
+└── 5× Post-processed contrast ... 5.5e-10 (6.0e-10 alloc)
+    ├── $\times g_{pp}$ × 0.1 ... 1.0e-01
+    └── $\times g_{pp}$ Total raw contrast ... 5.5e-09 (6.0e-09 alloc)
+        ├── RSS Static, Coherent (subtotal) ... 5.0e-09 (5.7e-09 alloc)
+        │   ├── $\sqrt{\sum c_i^2}$ coherent_1 ... 3.0e-09 (4.0e-09 alloc)
+        │   └── $\sqrt{\sum c_i^2}$ coherent_2 ... 4.0e-09 (4.0e-09 alloc)
+        ├── RSS Static, Incoherent (subtotal) ... 1.0e-09 (5.0e-10 alloc)
+        │   └── $\sqrt{\sum c_i^2}$ incoherent_1 ... 1.0e-09 (5.0e-10 alloc)
+        └── RSS Dynamic (subtotal) ... 2.0e-09 (2.0e-09 alloc)
+            └── $\sqrt{\sum c_i^2}$ dynamic_1 ... 2.0e-09 (2.0e-09 alloc)
