@@ -65,12 +65,9 @@ def _sample_config() -> dict:
 
 
 def _count_edge_labels(node) -> int:
-    count = 0
-    if node.children and node.op_label:
-        count = len(node.children)
-    for child in node.children:
-        count += _count_edge_labels(child)
-    return count
+    parent_edge_count = len(node.children) if node.op_label else 0
+    child_edge_count = sum(_count_edge_labels(child) for child in node.children)
+    return parent_edge_count + child_edge_count
 
 
 class TestTreeRendering(TestCase):

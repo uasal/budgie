@@ -32,6 +32,8 @@ class _CombineOpSpec:
 
 
 def _rss(values: list[float], **_: Any) -> float:
+    if not values:
+        raise BudgetTreeError("rss requires at least one child value.")
     return math.sqrt(sum(value**2 for value in values))
 
 
@@ -57,6 +59,8 @@ def _scalar_multiply(values: list[float], *, factor: float | None = None, **_: A
 
 
 def _max(values: list[float], **_: Any) -> float:
+    if not values:
+        raise BudgetTreeError("max requires at least one child value.")
     return max(values)
 
 
@@ -71,7 +75,7 @@ def _constant_label(default_label: str) -> Callable[[dict[str, Any]], str]:
 
 
 def _scalar_multiply_label(metadata: dict[str, Any]) -> str:
-    return r"$\times " + f"{metadata.get('factor', '?')}" + "$"
+    return rf"$\times {metadata.get('factor', '?')}$"
 
 
 def register_combine_op(
@@ -196,7 +200,10 @@ def build_tree(
     post_processing_chain: list[dict[str, Any]] | None = None,
     scalars: dict[str, Any] | None = None,
 ) -> BudgetNode:
-    """Build a hierarchical budget tree from tabular terms and explicit chain config."""
+    """Build a hierarchical budget tree from tabular terms and explicit chain config.
+
+    Expected table columns: Contrast Allocation, Contrast CBE, Type, Description, CBE Trace.
+    """
     if isinstance(budget_or_table, BudgetNode):
         return budget_or_table
 
@@ -353,23 +360,23 @@ def _latex_escape(text: str) -> str:
 
 
 def _latex_text(text: str) -> str:
-    if "$" in text or "\\" in text:
+    if _contains_latex(text):
         return text
     return _latex_escape(text)
 
 
+def _contains_latex(text: str) -> bool:
+    return "$" in text or "\\" in text
+
+
 def _escape_preserving_latex(text: str) -> str:
-    replacements = {
-        "&": r"\&",
-        "%": r"\%",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    return "".join(replacements.get(char, char) for char in text)
+    escaped: list[str] = []
+    for char in text:
+        if char in ("\\", "$"):
+            escaped.append(char)
+        else:
+            escaped.append(_latex_escape(char))
+    return "".join(escaped)
 
 
 def _collect_types(node: BudgetNode) -> list[str]:
@@ -392,7 +399,10 @@ def _style_name(type_name: str) -> str:
 
 
 def _is_over_allocated(node: BudgetNode) -> bool:
-    return node.kind == "leaf" and node.value is not None and node.allocation is not None and node.value > node.allocation
+    is_leaf = node.kind == "leaf"
+    has_values = node.value is not None and node.allocation is not None
+    exceeds_allocation = has_values and node.value > node.allocation
+    return is_leaf and exceeds_allocation
 
 
 def _node_label(node: BudgetNode, show: str) -> str:
@@ -404,7 +414,7 @@ def _node_label(node: BudgetNode, show: str) -> str:
         lines.append(f"alloc: {_format_number(node.allocation)}")
     table_lines = []
     for line in lines:
-        if "$" in line or "\\" in line:
+        if _contains_latex(line):
             table_lines.append(_escape_preserving_latex(line))
         else:
             table_lines.append(_latex_escape(line))
