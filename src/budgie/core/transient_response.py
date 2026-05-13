@@ -8,7 +8,10 @@ import pprint
 import numpy as np
 
 from budgie.core import Budget, MissionLifetime, find_vals
-from budgie.version import __version__
+try:
+    from budgie.version import __version__
+except ModuleNotFoundError:  # pragma: no cover - fallback for source/editable imports
+    from budgie import __version__
 
 #BUDGET_DATA_DIR = Path(__file__).parents[2].joinpath("data")
 NAME = "transient_response.yaml"
@@ -85,5 +88,3 @@ class TransientResponse(Budget):
             f.write(report)
 
         print("Transient Response Budget Report completed.")
-
-

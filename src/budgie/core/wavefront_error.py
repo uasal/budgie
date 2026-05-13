@@ -9,7 +9,10 @@ import numpy as np
 import pprint
 
 from budgie.core import Budget, find_vals
-from budgie.version import __version__
+try:
+    from budgie.version import __version__
+except ModuleNotFoundError:  # pragma: no cover - fallback for source/editable imports
+    from budgie import __version__
 
 NAME = "wavefront_error.yaml"
 YAML_LOC = f"../data/{NAME}"

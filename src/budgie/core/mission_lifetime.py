@@ -7,7 +7,10 @@ from pathlib import Path
 from budgie.core import Budget, find_vals
 import pprint
 import numpy as np
-from budgie.version import __version__
+try:
+    from budgie.version import __version__
+except ModuleNotFoundError:  # pragma: no cover - fallback for source/editable imports
+    from budgie import __version__
 
 NAME = "mission_lifetime.yaml"
 YAML_LOC = f"../data/{NAME}"
