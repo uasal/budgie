@@ -230,7 +230,11 @@ def build_tree(
         return budget_or_table
 
     records, derived_config, adapter_field_map = _resolve_table_and_config(budget_or_table, config)
-    chain = post_processing_chain or derived_config.get("post_processing_chain")
+    chain = (
+        post_processing_chain
+        if post_processing_chain is not None
+        else derived_config.get("post_processing_chain")
+    )
     if not chain:
         raise BudgetTreeError(_format_schema_error())
 
