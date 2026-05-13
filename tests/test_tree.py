@@ -84,6 +84,8 @@ class TestTreeRendering(TestCase):
         self.assertIn("\\begin{forest}", tikz)
         self.assertIn("\\end{forest}", tikz)
         self.assertIn("overallocated", tikz)
+        self.assertIn("coherent\\_1", tikz)
+        self.assertNotIn("coherent\\\\_1", tikz)
         self.assertEqual(tikz.count("edge label={"), _count_edge_labels(node))
 
     def test_requires_post_processing_chain(self):

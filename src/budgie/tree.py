@@ -458,7 +458,7 @@ def _is_over_allocated(node: BudgetNode) -> bool:
 
 def _node_label(node: BudgetNode, show: str) -> str:
     warning_prefix = r"$\triangle!$ " if _is_over_allocated(node) else ""
-    lines = [warning_prefix + _latex_text(node.name)]
+    lines = [warning_prefix + str(node.name)]
     if show in ("both", "cbe"):
         lines.append(f"CBE: {_format_number(node.value)}")
     if show in ("both", "allocation") and node.allocation is not None:
