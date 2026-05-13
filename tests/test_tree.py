@@ -164,6 +164,20 @@ class TestTreeRendering(TestCase):
         self.assertIsNotNone(node.value)
         self.assertIsNotNone(node.allocation)
 
+        def _find_first_leaf(current):
+            if current.kind == "leaf":
+                return current
+            for child in current.children:
+                leaf = _find_first_leaf(child)
+                if leaf is not None:
+                    return leaf
+            return None
+
+        leaf = _find_first_leaf(node)
+        self.assertIsNotNone(leaf)
+        self.assertNotIn("Description", leaf.metadata)
+        self.assertNotIn("CBE Trace", leaf.metadata)
+
     def test_custom_combine_op_registration(self):
         def _range(values, **_):
             return max(values) - min(values)

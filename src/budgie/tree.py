@@ -137,9 +137,11 @@ def _resolve_table_and_config(
         if records:
             columns = set(records[0].keys())
             inferred_cbe = next((column for column in columns if str(column).endswith(" CBE")), None)
+            inferred_cbe_name = str(inferred_cbe) if inferred_cbe is not None else None
+            inferred_prefix = inferred_cbe_name.rsplit(" CBE", 1)[0] if inferred_cbe_name else None
             inferred_allocation = (
-                f"{str(inferred_cbe)[:-4]} Allocation"
-                if inferred_cbe and f"{str(inferred_cbe)[:-4]} Allocation" in columns
+                f"{inferred_prefix} Allocation"
+                if inferred_prefix and f"{inferred_prefix} Allocation" in columns
                 else None
             )
             if inferred_cbe and inferred_allocation and "Type" in columns:
@@ -221,7 +223,8 @@ def build_tree(
     columns are optional metadata copied into ``BudgetNode.metadata``.
 
     Use ``field_map`` (or ``config['field_map']``) to map these generic concepts
-    to budget-specific column names.
+    to budget-specific column names. Field-map precedence is:
+    defaults < inferred adapter mapping < ``config['field_map']`` < ``field_map``.
     """
     if isinstance(budget_or_table, BudgetNode):
         return budget_or_table
