@@ -1,9 +1,10 @@
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 import pandas as pd
 
-from budgie.tree import BudgetTreeError, build_tree, register_combine_op, render_ascii, render_tikz
+from budgie.tree import BudgetTreeError, build_tree, display_tree, register_combine_op, render_ascii, render_tikz
 
 
 FIXTURES_DIR = Path(__file__).parent.joinpath("fixtures")
@@ -83,10 +84,40 @@ class TestTreeRendering(TestCase):
 
         self.assertIn("\\begin{forest}", tikz)
         self.assertIn("\\end{forest}", tikz)
+        self.assertIn("align=center", tikz)
         self.assertIn("overallocated", tikz)
+        self.assertIn("\\underline{", tikz)
+        self.assertIn("\\colorbox{yellow!50}{", tikz)
         self.assertIn("coherent\\_1", tikz)
         self.assertNotIn("coherent\\\\_1", tikz)
         self.assertEqual(tikz.count("edge label={"), _count_edge_labels(node))
+
+    def test_render_tikz_outline_layout(self):
+        node = build_tree(_sample_table(), config=_sample_config())
+        tikz = render_tikz(node, show="both", standalone=False, layout="outline")
+
+        self.assertIn("\\begin{tikzpicture}", tikz)
+        self.assertIn("grow via three points", tikz)
+        self.assertIn("edge from parent path", tikz)
+        self.assertIn("type_static_coherent/.style", tikz)
+        self.assertIn("type_static_incoherent/.style", tikz)
+        self.assertIn("type_dynamic/.style", tikz)
+        self.assertIn("RSS", tikz)
+        self.assertIn(r"$\times g_{pp}$", tikz)
+        self.assertIn("5×", tikz)
+        self.assertIn("\\underline{", tikz)
+        self.assertIn("\\colorbox{yellow!50}{", tikz)
+
+    def test_render_tikz_invalid_layout_raises(self):
+        node = build_tree(_sample_table(), config=_sample_config())
+        with self.assertRaises(BudgetTreeError):
+            render_tikz(node, layout="unknown-layout")
+
+    def test_display_tree_passes_layout_through(self):
+        node = build_tree(_sample_table(), config=_sample_config())
+        with patch("budgie.tree.render_tikz", return_value="ok") as mock_render:
+            display_tree(node, layout="outline")
+        self.assertEqual(mock_render.call_args.kwargs["layout"], "outline")
 
     def test_requires_post_processing_chain(self):
         with self.assertRaises(BudgetTreeError) as ctx:

@@ -450,7 +450,8 @@ def _collect_types(node: BudgetNode) -> list[str]:
 
 
 def _style_name(type_name: str) -> str:
-    safe = "".join(char.lower() if char.isalnum() else "_" for char in type_name).strip("_")
+    raw = "".join(char.lower() if char.isalnum() else "_" for char in type_name)
+    safe = "_".join(part for part in raw.split("_") if part)
     return f"type_{safe or 'unknown'}"
 
 
@@ -461,38 +462,92 @@ def _is_over_allocated(node: BudgetNode) -> bool:
     return is_leaf and exceeds_allocation
 
 
-def _node_label(node: BudgetNode, show: str) -> str:
+def _format_leaf_value_text(node: BudgetNode, text: str) -> str:
+    escaped_text = _latex_escape(text)
+    if node.kind != "leaf" or node.value is None or node.allocation is None:
+        return escaped_text
+    if node.value <= node.allocation:
+        return rf"\underline{{{escaped_text}}}"
+    return rf"\colorbox{{yellow!50}}{{{escaped_text}}}"
+
+
+def _node_label_forest(node: BudgetNode, show: str) -> str:
     warning_prefix = r"$\triangle!$ " if _is_over_allocated(node) else ""
-    lines = [warning_prefix + str(node.name)]
+    lines = [warning_prefix + _latex_escape(str(node.name))]
     if show in ("both", "cbe"):
-        lines.append(f"CBE: {_format_number(node.value)}")
+        lines.append(_format_leaf_value_text(node, f"CBE: {_format_number(node.value)}"))
     if show in ("both", "allocation") and node.allocation is not None:
-        lines.append(f"alloc: {_format_number(node.allocation)}")
-    table_lines = []
-    for line in lines:
-        if _contains_latex(line):
-            table_lines.append(_escape_preserving_latex(line))
-        else:
-            table_lines.append(_latex_escape(line))
-    return r"\begin{tabular}{l}" + r" \\\\ ".join(table_lines) + r"\end{tabular}"
+        lines.append(_latex_escape(f"alloc: {_format_number(node.allocation)}"))
+    return r"\begin{tabular}{c}" + r" \\\\ ".join(lines) + r"\end{tabular}"
+
+
+def _node_label_outline(node: BudgetNode, show: str) -> str:
+    warning_prefix = r"$\triangle!$ " if _is_over_allocated(node) else ""
+    name_text = warning_prefix + _latex_escape(str(node.name))
+    detail_parts: list[str] = []
+    if show in ("both", "cbe"):
+        detail_parts.append(_format_leaf_value_text(node, f"CBE {_format_number(node.value)}"))
+    if show == "both" and node.allocation is not None:
+        detail_parts.append(_latex_escape(f"(alloc {_format_number(node.allocation)})"))
+    elif show == "allocation" and node.allocation is not None:
+        detail_parts.append(_latex_escape(f"alloc {_format_number(node.allocation)}"))
+
+    if detail_parts:
+        return rf"\makebox[8cm][l]{{{name_text} \dotfill {' '.join(detail_parts)}}}"
+    return name_text
 
 
 def _render_forest_node(node: BudgetNode, show: str, parent_op_label: str | None = None) -> str:
     type_name = str(node.metadata.get("Type", node.kind))
-    options = [f"draw", f"rounded corners", f"align=left", _style_name(type_name)]
+    options = [f"draw", f"rounded corners", f"align=center", _style_name(type_name)]
     if _is_over_allocated(node):
         options.append("overallocated")
     if parent_op_label:
         options.append(f"edge label={{node[midway,left,font=\\scriptsize]{{{_latex_text(parent_op_label)}}}}}")
 
     children = "".join(_render_forest_node(child, show, node.op_label) for child in node.children)
-    return f"[{_node_label(node, show)}, {', '.join(options)}{children}]"
+    return f"[{_node_label_forest(node, show)}, {', '.join(options)}{children}]"
 
 
-def render_tikz(node: BudgetNode, show: str = "both", standalone: bool = True) -> str:
-    """Render a budget tree to tikz/forest LaTeX."""
+def _render_outline_node(
+    node: BudgetNode,
+    show: str,
+    parent_op_label: str | None = None,
+    depth: int = 0,
+) -> str:
+    type_name = str(node.metadata.get("Type", node.kind))
+    edge_label = ""
+    if parent_op_label:
+        edge_label = (
+            "[edge from parent node={node[midway,above right,font=\\scriptsize,text=gray]{"
+            + _latex_text(parent_op_label)
+            + "}}]"
+        )
+
+    children = "".join(_render_outline_node(child, show, node.op_label, depth + 1) for child in node.children)
+    node_label = _node_label_outline(node, show)
+    indent = "\n" + "  " * (depth + 1)
+    return f"{indent}child{edge_label} {{ node[{_style_name(type_name)}] {{{node_label}}}{children} }}"
+
+
+def render_tikz(
+    node: BudgetNode,
+    show: str = "both",
+    standalone: bool = True,
+    layout: str = "forest",
+) -> str:
+    """Render a budget tree to tikz as either boxed ``forest`` or outline layout.
+
+    Forest layout uses centered, multi-line labels. On leaves, CBE values are
+    underlined when they meet allocation and highlighted yellow when they exceed
+    allocation. Over-allocated leaves also keep the red border and warning marker.
+    Outline layout renders a directory-style elbow tree with the same leaf value
+    styling and per-type palette.
+    """
     if show not in {"both", "cbe", "allocation"}:
         raise BudgetTreeError("show must be one of: both, cbe, allocation")
+    if layout not in {"forest", "outline"}:
+        raise BudgetTreeError("layout must be one of: forest, outline")
 
     palette = [
         "blue!15",
@@ -509,24 +564,40 @@ def render_tikz(node: BudgetNode, show: str = "both", standalone: bool = True) -
         type_styles.append(f"{_style_name(type_name)}/.style={{fill={color}}}")
 
     style_block = "\n".join(type_styles + ["overallocated/.style={draw=red, very thick, font=\\bfseries}"])
-    forest = (
+    tikz_styles = (
         "\\tikzset{\n"
         f"{style_block}\n"
         "}\n"
-        "\\begin{forest}\n"
-        "for tree={grow'=south, s sep=8mm, l sep=10mm}\n"
-        f"{_render_forest_node(node, show)}\n"
-        "\\end{forest}\n"
     )
+    if layout == "forest":
+        tikz_body = (
+            "\\begin{forest}\n"
+            "for tree={grow'=south, s sep=8mm, l sep=10mm}\n"
+            f"{_render_forest_node(node, show)}\n"
+            "\\end{forest}\n"
+        )
+    else:
+        tikz_body = (
+            "\\begin{tikzpicture}[%\n"
+            "grow via three points={one child at (0.5,-0.7) and two children at (0.5,-0.7) and (0.5,-1.4)},%\n"
+            "edge from parent path={(\\tikzparentnode.south) |- (\\tikzchildnode.west)},%\n"
+            "every node/.style={anchor=west, align=left, text depth=0pt, text height=1.5ex, inner sep=1.5pt}%\n"
+            "]\n"
+            f"\\node[{_style_name(str(node.metadata.get('Type', node.kind)))}] {{{_node_label_outline(node, show)}}}"
+            f"{''.join(_render_outline_node(child, show, node.op_label, 1) for child in node.children)};\n"
+            "\\end{tikzpicture}\n"
+        )
+    output = tikz_styles + tikz_body
 
     if not standalone:
-        return forest
+        return output
 
     return (
         "\\documentclass[tikz,border=5pt]{standalone}\n"
         "\\usepackage{forest}\n"
+        "\\usepackage{xcolor}\n"
         "\\begin{document}\n"
-        f"{forest}"
+        f"{output}"
         "\\end{document}\n"
     )
 
@@ -549,6 +620,7 @@ def display_tree(
     *,
     show: str = "both",
     standalone: bool = True,
+    layout: str = "forest",
     config: dict[str, Any] | None = None,
     field_map: dict[str, str] | None = None,
     post_processing_chain: list[dict[str, Any]] | None = None,
@@ -562,7 +634,7 @@ def display_tree(
         post_processing_chain=post_processing_chain,
         scalars=scalars,
     )
-    tex = render_tikz(node, show=show, standalone=standalone)
+    tex = render_tikz(node, show=show, standalone=standalone, layout=layout)
 
     try:
         from IPython.display import Code, IFrame, display
