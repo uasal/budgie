@@ -117,6 +117,7 @@ class TestTreeRendering(TestCase):
         node = build_tree(_sample_table(), config=_sample_config())
         with patch("budgie.tree.render_tikz", return_value="ok") as mock_render:
             display_tree(node, layout="outline")
+        mock_render.assert_called_once()
         self.assertEqual(mock_render.call_args.kwargs["layout"], "outline")
 
     def test_requires_post_processing_chain(self):

@@ -455,6 +455,9 @@ def _style_name(type_name: str) -> str:
     return f"type_{safe or 'unknown'}"
 
 
+_OUTLINE_LABEL_WIDTH = "8cm"
+
+
 def _is_over_allocated(node: BudgetNode) -> bool:
     is_leaf = node.kind == "leaf"
     has_values = node.value is not None and node.allocation is not None
@@ -493,7 +496,7 @@ def _node_label_outline(node: BudgetNode, show: str) -> str:
         detail_parts.append(_latex_escape(f"alloc {_format_number(node.allocation)}"))
 
     if detail_parts:
-        return rf"\makebox[8cm][l]{{{name_text} \dotfill {' '.join(detail_parts)}}}"
+        return rf"\makebox[{_OUTLINE_LABEL_WIDTH}][l]{{{name_text} \dotfill {' '.join(detail_parts)}}}"
     return name_text
 
 
