@@ -1,3 +1,30 @@
+"""Build and render hierarchical budget trees.
+
+This module takes a *flat* table of budget terms and turns it into a nested
+:class:`BudgetNode` tree that is easier to inspect in plain text and LaTeX.
+Each input row becomes a leaf, leaves are grouped by their ``Type`` column into
+category subtotal nodes, and those category nodes are then wrapped by an
+explicit post-processing "spine" such as ``rss -> scalar_multiply ->
+scalar_multiply``.
+
+There are therefore three conceptual layers in the final tree:
+
+1. leaf terms copied directly from the input table,
+2. category subtotal nodes created from the leaf ``Type`` groups, and
+3. post-processing nodes created from ``post_processing_chain``.
+
+The *math* for each combine operation lives in the ``_COMBINE_OPS`` registry in
+this file. The YAML/config only chooses *which* registered operation to use for
+category nodes (via ``category_combine_ops``) and for post-processing nodes
+(via ``post_processing_chain``); it does not define arbitrary formulas.
+
+The required budget concepts are generic: CBE, Allocation, and Type. Their
+actual table column names are resolved in this order: an explicit ``field_map``
+keyword argument wins, then ``config["field_map"]``, then an adapter-detected
+legacy mapping for budget-like objects, and finally the default
+``{"cbe": "CBE", "allocation": "Allocation", "type": "Type"}`` map.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,11 +37,50 @@ from typing import Any, Callable
 
 
 class BudgetTreeError(Exception):
-    """Raised when budget tree construction or rendering fails."""
+    """Error raised when tree construction, rendering, or PDF compilation fails.
+
+    Callers see this exception when the input table is missing required columns,
+    when the post-processing chain is malformed, when an unknown combine
+    operator is requested, or when external LaTeX compilation fails.
+    """
 
 
 @dataclass
 class BudgetNode:
+    """One node in the hierarchical budget tree.
+
+    The dataclass decorator asks Python to generate the repetitive ``__init__``,
+    ``__repr__``, and comparison helpers for us, so the model can be described
+    mostly by its fields.
+
+    Parameters
+    ----------
+    name:
+        Human-readable label shown in ASCII and tikz output.
+    value:
+        The node's current best estimate (CBE). Leaf values come directly from
+        the input table. Non-leaf values are computed from the node's children
+        by the node's ``combine_op``.
+    allocation:
+        The allocated budget for the node. Leaf allocations come directly from
+        the input table. Non-leaf allocations are computed from the children by
+        the same ``combine_op`` used for the value.
+    kind:
+        Structural role of the node, such as ``leaf``, ``category``, ``rollup``,
+        or ``scalar``.
+    combine_op:
+        Name of the registered operation used to combine child values for
+        non-leaf nodes. Leaves leave this as ``None``.
+    op_label:
+        LaTeX/text label displayed on the incoming edge to each child, such as
+        ``RSS`` or ``$\\times g_{pp}$``.
+    metadata:
+        Extra source-table fields or configuration fields carried alongside the
+        node for rendering and debugging.
+    children:
+        Child nodes. Leaves have an empty list.
+    """
+
     name: str
     value: float | None
     allocation: float | None
@@ -27,6 +93,13 @@ class BudgetNode:
 
 @dataclass
 class _CombineOpSpec:
+    """Registry entry describing one combine operation.
+
+    This tiny dataclass is the registry payload: ``func`` performs the math,
+    while ``label_builder`` supplies the default edge label used by the
+    renderers when a config step does not override it.
+    """
+
     func: Callable[..., float]
     label_builder: Callable[[dict[str, Any]], str]
 
@@ -64,6 +137,14 @@ def _max(values: list[float], **_: Any) -> float:
     return max(values)
 
 
+# ``_COMBINE_OPS`` is the central extension registry for tree math.
+# Built-in operators are listed here so readers can see both their semantics and
+# their default edge labels without chasing each function definition:
+#   - rss: sqrt(sum(c_i^2))                  -> $\sqrt{\sum c_i^2}$
+#   - sum: sum(c_i)                         -> $\sum$
+#   - product: product(c_i)                 -> $\prod$
+#   - scalar_multiply: c * factor           -> $\times {factor}$
+#   - max: max(c_i)                         -> $\max$
 _COMBINE_OPS: dict[str, _CombineOpSpec] = {}
 
 
@@ -83,7 +164,12 @@ def register_combine_op(
     func: Callable[..., float],
     default_label: str | Callable[[dict[str, Any]], str],
 ) -> None:
-    """Register a new combine operation."""
+    """Register a new combine operation.
+
+    This is the public extension point for adding new tree math. The YAML/config
+    can only *select* from names in this registry, so new combine behavior must
+    be registered in Python code first and then referenced by name.
+    """
     if callable(default_label):
         label_builder = default_label
     else:
@@ -113,6 +199,7 @@ def _format_schema_error() -> str:
 
 
 def _coerce_table_records(table: Any) -> list[dict[str, Any]]:
+    """Normalize supported table-like inputs into a list of dictionaries."""
     if hasattr(table, "reset_index") and hasattr(table, "to_dict"):
         return table.reset_index().to_dict("records")
     if isinstance(table, list):
@@ -124,6 +211,12 @@ def _resolve_table_and_config(
     budget_or_table: Any,
     config: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, str] | None]:
+    """Resolve an input object into records, config, and any inferred field map.
+
+    The ``hasattr(..., "get_pandas_table")`` check is duck typing: instead of
+    requiring a specific class, we accept any object that behaves like a budget
+    adapter by exposing the method we need.
+    """
     derived_config = config or {}
     adapter_field_map = None
     if hasattr(budget_or_table, "get_pandas_table"):
@@ -144,12 +237,14 @@ def _resolve_table_and_config(
                 if inferred_prefix and f"{inferred_prefix} Allocation" in columns
                 else None
             )
+            # This legacy map keeps older budget-like adapters working when they
+            # still expose prefixed ``<domain> CBE`` / ``<domain> Allocation``
+            # column pairs instead of the generic names.
             if inferred_cbe and inferred_allocation and "Type" in columns:
                 adapter_field_map = {"cbe": inferred_cbe, "allocation": inferred_allocation, "type": "Type"}
         return records, derived_config, adapter_field_map
-    else:
-        table = budget_or_table
-    return _coerce_table_records(table), derived_config, adapter_field_map
+
+    return _coerce_table_records(budget_or_table), derived_config, adapter_field_map
 
 
 def _resolve_factor(step: dict[str, Any], config: dict[str, Any], scalars: dict[str, Any] | None) -> float:
@@ -166,7 +261,7 @@ def _resolve_factor(step: dict[str, Any], config: dict[str, Any], scalars: dict[
 
 
 def _leaf_name(record: dict[str, Any]) -> str:
-    """Return best-effort leaf display name from common table field names."""
+    """Return the best available display name from common source-table columns."""
     for key in ("Name", "name", "Term", "term", "index", "Item", "item", "Description"):
         value = record.get(key)
         if value not in (None, ""):
@@ -175,6 +270,7 @@ def _leaf_name(record: dict[str, Any]) -> str:
 
 
 def _compute_node_value(node: BudgetNode) -> tuple[float | None, float | None]:
+    """Compute aggregate value/allocation for a non-leaf node."""
     if not node.children or not node.combine_op:
         return node.value, node.allocation
     if node.combine_op not in _COMBINE_OPS:
@@ -187,6 +283,9 @@ def _compute_node_value(node: BudgetNode) -> tuple[float | None, float | None]:
     factor = node.metadata.get("factor")
 
     if node.combine_op == "scalar_multiply":
+        # Scalar-multiply nodes carry an extra scalar child so the tree shows the
+        # factor explicitly, but the math should only multiply the non-scalar
+        # budget child.
         non_scalar_values = [child.value for child in node.children if child.kind != "scalar" and child.value is not None]
         non_scalar_alloc = [
             child.allocation for child in node.children if child.kind != "scalar" and child.allocation is not None
@@ -217,14 +316,17 @@ def build_tree(
     post_processing_chain: list[dict[str, Any]] | None = None,
     scalars: dict[str, Any] | None = None,
 ) -> BudgetNode:
-    """Build a hierarchical budget tree from tabular terms and explicit chain config.
+    """Build a hierarchical budget tree from tabular terms and explicit config.
 
-    By default, expected table columns are CBE, Allocation, and Type. Additional
-    columns are optional metadata copied into ``BudgetNode.metadata``.
+    Parameters are intentionally layered so callers can override pieces of a
+    YAML/config object at runtime. ``field_map`` is resolved in this order:
+    explicit keyword argument, then ``config['field_map']``, then any
+    adapter-detected legacy mapping, and finally the default generic map.
 
-    Use ``field_map`` (or ``config['field_map']``) to map these generic concepts
-    to budget-specific column names. Field-map precedence is:
-    defaults < inferred adapter mapping < ``config['field_map']`` < ``field_map``.
+    ``post_processing_chain`` follows the same explicit-over-config rule. The
+    chain must be provided explicitly either by keyword argument or inside the
+    config; there is no implicit default because the post-processing spine is a
+    modeling choice that should be visible to the caller.
     """
     if isinstance(budget_or_table, BudgetNode):
         return budget_or_table
@@ -361,12 +463,19 @@ def _ascii_alloc_suffix(node: BudgetNode, show: str) -> str:
 
 
 def render_ascii(node: BudgetNode, show: str = "both") -> str:
-    """Render a budget tree as an ASCII hierarchy."""
+    """Return the budget tree as a plain-text ASCII hierarchy.
+
+    The function only returns a string; it does not write files or invoke any
+    external tools. This renderer intentionally stays simple and does not try to
+    mirror the visual alert styling used by the tikz renderers.
+    """
     if show not in {"both", "cbe", "allocation"}:
         raise BudgetTreeError("show must be one of: both, cbe, allocation")
 
     lines: list[str] = []
 
+    # ``walk`` is a nested recursive helper: it calls itself for each child so
+    # the same small block of logic can handle trees of any depth.
     def walk(
         current: BudgetNode,
         prefix: str,
@@ -415,27 +524,18 @@ def _latex_escape(text: str) -> str:
     return "".join(replacements.get(char, char) for char in text)
 
 
+def _contains_latex(text: str) -> bool:
+    return "$" in text or "\\" in text
+
+
 def _latex_text(text: str) -> str:
     if _contains_latex(text):
         return text
     return _latex_escape(text)
 
 
-def _contains_latex(text: str) -> bool:
-    return "$" in text or "\\" in text
-
-
-def _escape_preserving_latex(text: str) -> str:
-    escaped: list[str] = []
-    for char in text:
-        if char in ("\\", "$"):
-            escaped.append(char)
-        else:
-            escaped.append(_latex_escape(char))
-    return "".join(escaped)
-
-
 def _collect_types(node: BudgetNode) -> list[str]:
+    """Collect unique ``Type`` values so each one can receive a tikz style."""
     types: list[str] = []
 
     def walk(current: BudgetNode) -> None:
@@ -455,9 +555,6 @@ def _style_name(type_name: str) -> str:
     return f"type_{safe or 'unknown'}"
 
 
-_OUTLINE_LABEL_WIDTH = "8cm"
-
-
 def _is_over_allocated(node: BudgetNode) -> bool:
     is_leaf = node.kind == "leaf"
     has_values = node.value is not None and node.allocation is not None
@@ -465,93 +562,124 @@ def _is_over_allocated(node: BudgetNode) -> bool:
     return is_leaf and exceeds_allocation
 
 
-def _format_leaf_value_text(node: BudgetNode, text: str) -> str:
-    escaped_text = _latex_escape(text)
-    if node.kind != "leaf" or node.value is None or node.allocation is None:
-        return escaped_text
-    if node.value <= node.allocation:
-        return rf"\underline{{{escaped_text}}}"
-    return rf"\colorbox{{yellow!50}}{{{escaped_text}}}"
+def _meets_allocation(node: BudgetNode) -> bool:
+    is_leaf = node.kind == "leaf"
+    has_values = node.value is not None and node.allocation is not None
+    within_allocation = has_values and node.value <= node.allocation
+    return is_leaf and within_allocation
 
 
-def _node_label_forest(node: BudgetNode, show: str) -> str:
-    warning_prefix = r"$\triangle!$ " if _is_over_allocated(node) else ""
-    lines = [warning_prefix + _latex_escape(str(node.name))]
+def _format_leaf_value_text(node: BudgetNode, value_text: str, alert_on_exceedances: bool) -> str:
+    r"""Format the displayed CBE value for a leaf node.
+
+    ``\underline{...}`` gives positive feedback for leaves that meet their
+    allocation. ``\colorbox{yellow!50}{...}`` is a yellow background highlight
+    used only for over-allocated leaves, and only when alerts are enabled.
+    """
+    escaped_value = _latex_escape(value_text)
+    if _meets_allocation(node):
+        return rf"\underline{{{escaped_value}}}"
+    if alert_on_exceedances and _is_over_allocated(node):
+        return rf"\colorbox{{yellow!50}}{{{escaped_value}}}"
+    return escaped_value
+
+
+def _styled_node_name(node: BudgetNode, alert_on_exceedances: bool) -> str:
+    warning_prefix = r"$\triangle!$ " if alert_on_exceedances and _is_over_allocated(node) else ""
+    return f"{warning_prefix}{_latex_text(str(node.name))}"
+
+
+def _node_label_forest(node: BudgetNode, show: str, alert_on_exceedances: bool) -> str:
+    """Build the multi-line label used inside a forest node box."""
+    lines = [_styled_node_name(node, alert_on_exceedances)]
     if show in ("both", "cbe"):
-        lines.append(_format_leaf_value_text(node, f"CBE: {_format_number(node.value)}"))
+        value_text = _format_leaf_value_text(node, _format_number(node.value), alert_on_exceedances)
+        lines.append(f"{_latex_escape('CBE: ')}{value_text}")
     if show in ("both", "allocation") and node.allocation is not None:
-        lines.append(_latex_escape(f"alloc: {_format_number(node.allocation)}"))
+        lines.append(f"{_latex_escape('alloc: ')}{_latex_escape(_format_number(node.allocation))}")
+
+    # ``tabular`` gives the forest node controlled line breaks. Using the ``c``
+    # column type centers each line inside the box instead of left-justifying it.
     return r"\begin{tabular}{c}" + r" \\\\ ".join(lines) + r"\end{tabular}"
 
 
-def _node_label_outline(node: BudgetNode, show: str) -> str:
-    warning_prefix = r"$\triangle!$ " if _is_over_allocated(node) else ""
-    name_text = warning_prefix + _latex_escape(str(node.name))
-    detail_parts: list[str] = []
-    if show in ("both", "cbe"):
-        detail_parts.append(_format_leaf_value_text(node, f"CBE {_format_number(node.value)}"))
-    if show == "both" and node.allocation is not None:
-        detail_parts.append(_latex_escape(f"(alloc {_format_number(node.allocation)})"))
-    elif show == "allocation" and node.allocation is not None:
-        detail_parts.append(_latex_escape(f"alloc {_format_number(node.allocation)}"))
+def _outline_value_text(node: BudgetNode, show: str, alert_on_exceedances: bool) -> str:
+    if show == "allocation":
+        return _latex_escape(_format_number(node.allocation))
 
-    if detail_parts:
-        return rf"\makebox[{_OUTLINE_LABEL_WIDTH}][l]{{{name_text} \dotfill {' '.join(detail_parts)}}}"
+    parts = []
+    if show in ("both", "cbe"):
+        parts.append(_format_leaf_value_text(node, _format_number(node.value), alert_on_exceedances))
+    if show == "both" and node.allocation is not None:
+        parts.append(f"{_latex_escape('(alloc ')}{_latex_escape(_format_number(node.allocation))}{_latex_escape(')')}")
+    return " ".join(parts) if parts else _latex_escape(_format_number(node.value))
+
+
+def _node_label_outline(node: BudgetNode, show: str, alert_on_exceedances: bool) -> str:
+    """Build the single-line label used by the directory-style outline layout."""
+    name_text = _styled_node_name(node, alert_on_exceedances)
+    value_text = _outline_value_text(node, show, alert_on_exceedances)
+    if value_text:
+        # ``\dotfill`` inserts stretchy dotted leaders between the label and the
+        # value so the number visually lines up on the right.
+        return f"{name_text} \\dotfill {value_text}"
     return name_text
 
 
-def _render_forest_node(node: BudgetNode, show: str, parent_op_label: str | None = None) -> str:
+def _render_forest_node(
+    node: BudgetNode,
+    show: str,
+    alert_on_exceedances: bool,
+    parent_op_label: str | None = None,
+) -> str:
+    """Recursively render one node and its descendants in ``forest`` syntax."""
     type_name = str(node.metadata.get("Type", node.kind))
-    options = [f"draw", f"rounded corners", f"align=center", _style_name(type_name)]
-    if _is_over_allocated(node):
+    options = ["draw", "rounded corners", "align=center", _style_name(type_name)]
+    if alert_on_exceedances and _is_over_allocated(node):
         options.append("overallocated")
     if parent_op_label:
         options.append(f"edge label={{node[midway,left,font=\\scriptsize]{{{_latex_text(parent_op_label)}}}}}")
 
-    children = "".join(_render_forest_node(child, show, node.op_label) for child in node.children)
-    return f"[{_node_label_forest(node, show)}, {', '.join(options)}{children}]"
+    # The forest renderer is recursive: each node returns a string that embeds
+    # the rendered strings of its children, so one function handles the entire
+    # tree regardless of depth.
+    children = "".join(_render_forest_node(child, show, alert_on_exceedances, node.op_label) for child in node.children)
+    return f"[{_node_label_forest(node, show, alert_on_exceedances)}, {', '.join(options)}{children}]"
 
 
 def _render_outline_node(
     node: BudgetNode,
     show: str,
-    parent_op_label: str | None = None,
+    alert_on_exceedances: bool,
+    *,
     depth: int = 0,
 ) -> str:
+    """Recursively render one node and its descendants in tikz tree syntax."""
+    indent = "  " * depth
     type_name = str(node.metadata.get("Type", node.kind))
-    edge_label = ""
-    if parent_op_label:
-        edge_label = (
-            "[edge from parent node={node[midway,above right,font=\\scriptsize,text=gray]{"
-            + _latex_text(parent_op_label)
-            + "}}]"
+    options = ["draw", "rounded corners", "align=left", "anchor=west", _style_name(type_name)]
+    if alert_on_exceedances and _is_over_allocated(node):
+        options.append("overallocated")
+
+    parts = [f"{indent}node[{', '.join(options)}]{{{_node_label_outline(node, show, alert_on_exceedances)}}}"]
+    for child in node.children:
+        edge_label = ""
+        if node.op_label:
+            edge_label = (
+                " edge from parent node[midway,above right,font=\\scriptsize,text=gray]"
+                f"{{{_latex_text(node.op_label)}}}"
+            )
+        parts.append(
+            "\n"
+            f"{indent}  child {{\n"
+            f"{_render_outline_node(child, show, alert_on_exceedances, depth=depth + 2)}"
+            f"{edge_label}\n"
+            f"{indent}  }}"
         )
-
-    children = "".join(_render_outline_node(child, show, node.op_label, depth + 1) for child in node.children)
-    node_label = _node_label_outline(node, show)
-    indent = "\n" + "  " * (depth + 1)
-    return f"{indent}child{edge_label} {{ node[{_style_name(type_name)}] {{{node_label}}}{children} }}"
+    return "".join(parts)
 
 
-def render_tikz(
-    node: BudgetNode,
-    show: str = "both",
-    standalone: bool = True,
-    layout: str = "forest",
-) -> str:
-    """Render a budget tree to tikz as either boxed ``forest`` or outline layout.
-
-    Forest layout uses centered, multi-line labels. On leaves, CBE values are
-    underlined when they meet allocation and highlighted yellow when they exceed
-    allocation. Over-allocated leaves also keep the red border and warning marker.
-    Outline layout renders a directory-style elbow tree with the same leaf value
-    styling and per-type palette.
-    """
-    if show not in {"both", "cbe", "allocation"}:
-        raise BudgetTreeError("show must be one of: both, cbe, allocation")
-    if layout not in {"forest", "outline"}:
-        raise BudgetTreeError("layout must be one of: forest, outline")
-
+def _tikz_style_block(node: BudgetNode, alert_on_exceedances: bool) -> str:
     palette = [
         "blue!15",
         "green!15",
@@ -566,47 +694,111 @@ def render_tikz(
         color = palette[index % len(palette)]
         type_styles.append(f"{_style_name(type_name)}/.style={{fill={color}}}")
 
-    style_block = "\n".join(type_styles + ["overallocated/.style={draw=red, very thick, font=\\bfseries}"])
-    tikz_styles = (
-        "\\tikzset{\n"
-        f"{style_block}\n"
-        "}\n"
-    )
+    # ``\tikzset{...}`` defines reusable named styles. We auto-generate one fill
+    # style per ``Type`` so new categories pick up palette colors automatically.
+    if alert_on_exceedances:
+        type_styles.append("overallocated/.style={draw=red, very thick, font=\\bfseries}")
+    return "\\tikzset{\n" + "\n".join(type_styles) + "\n}\n"
+
+
+def render_tikz(
+    node: BudgetNode,
+    show: str = "both",
+    standalone: bool = True,
+    layout: str = "forest",
+    alert_on_exceedances: bool = True,
+) -> str:
+    """Return tikz LaTeX for the tree.
+
+    Parameters
+    ----------
+    node:
+        The already-built tree to render.
+    show:
+        Which numeric fields to show: ``both``, ``cbe``, or ``allocation``.
+    standalone:
+        When ``True`` the return value is a complete LaTeX document that can be
+        compiled directly. When ``False`` only the tikz/forest fragment is
+        returned so callers can embed it into a larger document.
+    layout:
+        ``forest`` produces boxed nodes in a top-down tree. ``outline`` produces
+        a directory-style outline similar to the example discussed at
+        https://latexdraw.com/draw-trees-in-tikz/.
+    alert_on_exceedances:
+        When ``True`` (the default), over-allocated leaves get the existing
+        warning prefix, yellow highlight, and red border. When ``False``, those
+        negative alert cues are suppressed while the underline for leaves that
+        meet their allocation remains visible.
+
+    Returns
+    -------
+    str
+        LaTeX source code only; this function does not write files or invoke
+        external programs.
+    """
+    if show not in {"both", "cbe", "allocation"}:
+        raise BudgetTreeError("show must be one of: both, cbe, allocation")
+    if layout not in {"forest", "outline"}:
+        raise BudgetTreeError("layout must be one of: forest, outline")
+
+    style_block = _tikz_style_block(node, alert_on_exceedances)
     if layout == "forest":
-        tikz_body = (
-            "\\begin{forest}\n"
-            "for tree={grow'=south, s sep=8mm, l sep=10mm}\n"
-            f"{_render_forest_node(node, show)}\n"
-            "\\end{forest}\n"
+        forest = (
+            style_block
+            # ``forest`` is a LaTeX package specialized for tree diagrams. The
+            # ``for tree={...}`` block supplies default options applied to every
+            # node in the environment.
+            + "\\begin{forest}\n"
+            + "for tree={grow'=south, s sep=8mm, l sep=10mm}\n"
+            + f"{_render_forest_node(node, show, alert_on_exceedances)}\n"
+            + "\\end{forest}\n"
         )
+        body = forest
     else:
-        tikz_body = (
-            "\\begin{tikzpicture}[%\n"
-            "grow via three points={one child at (0.5,-0.7) and two children at (0.5,-0.7) and (0.5,-1.4)},%\n"
-            "edge from parent path={(\\tikzparentnode.south) |- (\\tikzchildnode.west)},%\n"
-            "every node/.style={anchor=west, align=left, text depth=0pt, text height=1.5ex, inner sep=1.5pt}%\n"
-            "]\n"
-            f"\\node[{_style_name(str(node.metadata.get('Type', node.kind)))}] {{{_node_label_outline(node, show)}}}"
-            f"{''.join(_render_outline_node(child, show, node.op_label, 1) for child in node.children)};\n"
-            "\\end{tikzpicture}\n"
+        outline = (
+            style_block
+            # ``tikzpicture`` is the generic drawing environment used for the
+            # outline layout. The grow/edge options below follow the directory
+            # tree pattern from latexdraw.com.
+            + "\\begin{tikzpicture}[\n"
+            # ``grow via three points`` tells tikz where to place the first and
+            # later children so the tree reads like an indented outline rather
+            # than a centered org chart.
+            + "grow via three points={one child at (0,-0.9) and two children at (0,-0.9) and (10em,-0.9)},\n"
+            # In tikz path syntax, ``|-`` means "go vertically, then turn and go
+            # horizontally". That creates the elbow-style connector seen in many
+            # directory trees.
+            + "edge from parent path={(\\tikzparentnode.south) |- (\\tikzchildnode.west)},\n"
+            + "every node/.style={font=\\small},\n"
+            + "]\n"
+            + f"{_render_outline_node(node, show, alert_on_exceedances)};\n"
+            + "\\end{tikzpicture}\n"
         )
-    output = tikz_styles + tikz_body
+        body = outline
 
     if not standalone:
-        return output
+        return body
 
+    # The ``standalone`` document class is convenient for one-off renders: it
+    # produces a tightly-cropped PDF that can be embedded into reports without
+    # needing to manually trim page margins.
     return (
         "\\documentclass[tikz,border=5pt]{standalone}\n"
         "\\usepackage{forest}\n"
         "\\usepackage{xcolor}\n"
         "\\begin{document}\n"
-        f"{output}"
+        f"{body}"
         "\\end{document}\n"
     )
 
 
 def compile_to_pdf(tex_path: str | Path) -> Path:
-    """Compile a tex file to PDF with pdflatex."""
+    """Compile a ``.tex`` file to PDF with ``pdflatex``.
+
+    The input ``.tex`` file is expected to exist already. This function runs the
+    external ``pdflatex`` command, writes the usual LaTeX side-product files in
+    the same directory, and returns the path to the generated PDF.
+    """
     tex_path = Path(tex_path)
     pdflatex = shutil.which("pdflatex")
     if not pdflatex:
@@ -624,12 +816,20 @@ def display_tree(
     show: str = "both",
     standalone: bool = True,
     layout: str = "forest",
+    alert_on_exceedances: bool = True,
     config: dict[str, Any] | None = None,
     field_map: dict[str, str] | None = None,
     post_processing_chain: list[dict[str, Any]] | None = None,
     scalars: dict[str, Any] | None = None,
 ) -> Any:
-    """Display tree output in IPython, with best-effort PDF compile."""
+    """Display a tree in IPython and return the rendered artifact.
+
+    If ``budget_or_node`` is not already a :class:`BudgetNode`, the function
+    first calls :func:`build_tree`. It then calls :func:`render_tikz`, writes the
+    LaTeX to a temporary directory, and makes a best effort to compile and
+    display a PDF inline in IPython. When IPython or ``pdflatex`` is unavailable,
+    it falls back to returning/displaying the raw LaTeX string instead.
+    """
     node = budget_or_node if isinstance(budget_or_node, BudgetNode) else build_tree(
         budget_or_node,
         config=config,
@@ -637,7 +837,13 @@ def display_tree(
         post_processing_chain=post_processing_chain,
         scalars=scalars,
     )
-    tex = render_tikz(node, show=show, standalone=standalone, layout=layout)
+    tex = render_tikz(
+        node,
+        show=show,
+        standalone=standalone,
+        layout=layout,
+        alert_on_exceedances=alert_on_exceedances,
+    )
 
     try:
         from IPython.display import Code, IFrame, display
