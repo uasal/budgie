@@ -27,7 +27,7 @@ def test_resolve_and_execute_external_budget(tmp_path, monkeypatch):
     )
     (tmp_path / "fixture.yaml").write_text("allocation: 1\n", encoding="utf-8")
 
-    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.syspath_prepend(tmp_path)
     set_directory(tmp_path)
 
     budget = resolve_budget("tmp_module:DummyBudget", "fixture.yaml")
@@ -47,7 +47,7 @@ def test_non_budget_external_class_raises_type_error(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.syspath_prepend(tmp_path)
 
     with pytest.raises(TypeError):
         resolve_budget("tmp_non_budget:NotABudget", "fixture.yaml")
