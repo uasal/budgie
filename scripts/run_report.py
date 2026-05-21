@@ -26,7 +26,7 @@ args = 1
 def is_external_budget_spec(spec):
     # CLI contract: built-in budgets are simple yaml/toml names while plug-ins
     # use "module:ClassName". Keep this check aligned with the issue requirement.
-    return ":" in spec and not spec.endswith((".yaml", ".toml"))
+    return spec.count(":") == 1 and not spec.endswith((".yaml", ".toml"))
 
 
 def resolve_budget(spec, yaml_name=None):
