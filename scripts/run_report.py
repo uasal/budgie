@@ -23,8 +23,12 @@ print("Argument list collected: ", sys.argv)
 args = 1
 
 
+def is_external_budget_spec(spec):
+    return ":" in spec and not spec.endswith((".yaml", ".toml"))
+
+
 def resolve_budget(spec, yaml_name=None):
-    if ":" in spec and not spec.endswith((".yaml", ".toml")):
+    if is_external_budget_spec(spec):
         module_path, class_name = spec.split(":", 1)
         budget_class = getattr(importlib.import_module(module_path), class_name)
         if not issubclass(budget_class, Budget):
@@ -53,7 +57,7 @@ if __name__ == "__main__":
     while args < len(sys.argv):
         budget_spec = sys.argv[args]
         yaml_name = None
-        if ":" in budget_spec and not budget_spec.endswith((".yaml", ".toml")):
+        if is_external_budget_spec(budget_spec):
             if args + 1 >= len(sys.argv):
                 raise LookupError(
                     f"External budget '{budget_spec}' requires a YAML filename argument"
