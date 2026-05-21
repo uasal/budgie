@@ -703,7 +703,6 @@ def _tikz_style_block(node: BudgetNode, alert_on_exceedances: bool) -> str:
 
 def render_tikz(
     node: BudgetNode,
-    *,
     show: str = "both",
     standalone: bool = True,
     layout: str = "forest",
