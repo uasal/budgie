@@ -12,4 +12,5 @@ A 'demo' for visualizing the initial budget yaml files is added to this tool and
 
 ## Related Documents
 - [STP Budget Package Description](docs/design_description.md)
+- [External Budget Plug-ins](docs/external_budgets.md)
 

@@ -1,6 +1,15 @@
+import importlib
 import sys
 from pathlib import Path
-from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
+from budgie import (
+    Budget,
+    MissionLifetime,
+    Plantuml_Writer,
+    TransientResponse,
+    WaveFrontError,
+    set_directory,
+)
+
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
@@ -14,21 +23,45 @@ print("Argument list collected: ", sys.argv)
 args = 1
 
 
+def resolve_budget(spec, yaml_name=None):
+    if ":" in spec and not spec.endswith((".yaml", ".toml")):
+        module_path, class_name = spec.split(":", 1)
+        budget_class = getattr(importlib.import_module(module_path), class_name)
+        if not issubclass(budget_class, Budget):
+            raise TypeError(
+                f"{module_path}:{class_name} must resolve to a subclass of budgie.Budget"
+            )
+        if yaml_name is None:
+            raise LookupError(
+                f"External budget '{module_path}:{class_name}' requires a YAML filename argument"
+            )
+        return budget_class(yaml_name)
+
+    if spec == "wavefront_error.yaml":
+        return WaveFrontError()
+    if spec == "mission_lifetime.yaml":
+        return MissionLifetime()
+    if spec == "transient_response.yaml":
+        return TransientResponse()
+    raise LookupError(f"Cannot find {spec}")
+
+
 # Running reports
 if __name__ == "__main__":
     print("Starting run_report script...")
     # Run throw all the positions of args collected and stop before it reaches the end.
     while args < len(sys.argv):
-        budget_name = sys.argv[args]
-        # Determine budget subclass based on the name of file
-        if budget_name == "wavefront_error.yaml":
-            budget = WaveFrontError()
-        elif budget_name == "mission_lifetime.yaml":
-            budget = MissionLifetime()
-        elif budget_name == "transient_response.yaml":
-            budget = TransientResponse()
-        else:
-            raise LookupError(f"Cannot find {budget_name}")
+        budget_spec = sys.argv[args]
+        yaml_name = None
+        if ":" in budget_spec and not budget_spec.endswith((".yaml", ".toml")):
+            if args + 1 >= len(sys.argv):
+                raise LookupError(
+                    f"External budget '{budget_spec}' requires a YAML filename argument"
+                )
+            yaml_name = sys.argv[args + 1]
+            args = args + 1
+
+        budget = resolve_budget(budget_spec, yaml_name)
         # Increment args
         args = args + 1
         # Perform calculations for budget(s) and generates an output markdown file with results.
@@ -42,4 +75,3 @@ if __name__ == "__main__":
     # Will give a message if no arguments were provided.
     if len(sys.argv) == 1:
         print("No args specified in command. Add the file name(s) after 'run_report.py' to specify the reports you want to run.")
-
