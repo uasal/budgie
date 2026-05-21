@@ -24,6 +24,8 @@ args = 1
 
 
 def is_external_budget_spec(spec):
+    # CLI contract: built-in budgets are simple yaml/toml names while plug-ins
+    # use "module:ClassName". Keep this check aligned with the issue requirement.
     return ":" in spec and not spec.endswith((".yaml", ".toml"))
 
 
@@ -36,7 +38,7 @@ def resolve_budget(spec, yaml_name=None):
                 f"{module_path}:{class_name} must resolve to a subclass of budgie.Budget"
             )
         if yaml_name is None:
-            raise LookupError(
+            raise ValueError(
                 f"External budget '{module_path}:{class_name}' requires a YAML filename argument"
             )
         return budget_class(yaml_name)
@@ -59,7 +61,7 @@ if __name__ == "__main__":
         yaml_name = None
         if is_external_budget_spec(budget_spec):
             if args + 1 >= len(sys.argv):
-                raise LookupError(
+                raise ValueError(
                     f"External budget '{budget_spec}' requires a YAML filename argument"
                 )
             yaml_name = sys.argv[args + 1]

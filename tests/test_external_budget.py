@@ -13,7 +13,7 @@ _SPEC.loader.exec_module(_RUN_REPORT)
 resolve_budget = _RUN_REPORT.resolve_budget
 
 
-def test_resolve_external_budget_and_run_report(tmp_path, monkeypatch):
+def test_resolve_and_execute_external_budget(tmp_path, monkeypatch):
     module_path = tmp_path / "tmp_module.py"
     module_path.write_text(
         "from budgie import Budget\n"
