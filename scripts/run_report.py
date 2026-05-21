@@ -61,8 +61,11 @@ if __name__ == "__main__":
         yaml_name = None
         if is_external_budget_spec(budget_spec):
             yaml_name = sys.argv[args + 1] if args + 1 < len(sys.argv) else None
-            if yaml_name is not None:
-                args += 1
+            if yaml_name is None:
+                raise ValueError(
+                    f"External budget '{budget_spec}' requires a YAML filename argument"
+                )
+            args += 1
 
         budget = resolve_budget(budget_spec, yaml_name)
         # Increment args
