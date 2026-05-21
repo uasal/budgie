@@ -56,3 +56,8 @@ def test_non_budget_external_class_raises_type_error(tmp_path, monkeypatch):
 def test_unknown_builtin_yaml_raises_lookup_error():
     with pytest.raises(LookupError):
         resolve_budget("unknown_budget.yaml")
+
+
+def test_unknown_builtin_yaml_with_yaml_name_raises_lookup_error():
+    with pytest.raises(LookupError):
+        resolve_budget("unknown_budget.yaml", "fixture.yaml")

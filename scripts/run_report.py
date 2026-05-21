@@ -59,11 +59,11 @@ if __name__ == "__main__":
                     f"External budget '{budget_spec}' requires a YAML filename argument"
                 )
             yaml_name = sys.argv[args + 1]
-            args = args + 1
+            args += 1
 
         budget = resolve_budget(budget_spec, yaml_name)
         # Increment args
-        args = args + 1
+        args += 1
         # Perform calculations for budget(s) and generates an output markdown file with results.
         budget.run_report(output_dir)
         print("Budget Report Results printed to: " + str(output_dir))
