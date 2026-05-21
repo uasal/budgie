@@ -33,7 +33,7 @@ def resolve_budget(spec, yaml_name=None):
     if is_external_budget_spec(spec):
         module_path, class_name = spec.split(":", 1)
         budget_class = getattr(importlib.import_module(module_path), class_name)
-        if not issubclass(budget_class, Budget):
+        if not isinstance(budget_class, type) or not issubclass(budget_class, Budget):
             raise TypeError(
                 f"{module_path}:{class_name} must resolve to a subclass of budgie.Budget"
             )
