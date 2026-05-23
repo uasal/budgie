@@ -638,7 +638,7 @@ def _render_forest_node(
     if alert_on_exceedances and _is_over_allocated(node):
         options.append("overallocated")
     if parent_op_label:
-        options.append(f"edge label={{node[midway,left,font=\\scriptsize]{{{_latex_text(parent_op_label)}}}}}")
+        options.append(f"edge label={{node[midway,left,font={{\\scriptsize}}]{{{_latex_text(parent_op_label)}}}}}")
 
     # The forest renderer is recursive: each node returns a string that embeds
     # the rendered strings of its children, so one function handles the entire
@@ -661,12 +661,13 @@ def _render_outline_node(
     if alert_on_exceedances and _is_over_allocated(node):
         options.append("overallocated")
 
-    parts = [f"{indent}node[{', '.join(options)}]{{{_node_label_outline(node, show, alert_on_exceedances)}}}"]
+    node_cmd = "\\node" if depth == 0 else "node"
+    parts = [f"{indent}{node_cmd}[{', '.join(options)}]{{{_node_label_outline(node, show, alert_on_exceedances)}}}"]
     for child in node.children:
         edge_label = ""
         if node.op_label:
             edge_label = (
-                " edge from parent node[midway,above right,font=\\scriptsize,text=gray]"
+                " edge from parent node[midway,above right,font={\\scriptsize},text=gray]"
                 f"{{{_latex_text(node.op_label)}}}"
             )
         parts.append(
@@ -698,7 +699,7 @@ def _tikz_style_block(node: BudgetNode, alert_on_exceedances: bool) -> str:
     # style per ``Type`` so new categories pick up palette colors automatically.
     if alert_on_exceedances:
         type_styles.append("overallocated/.style={draw=red, very thick, font=\\bfseries}")
-    return "\\tikzset{\n" + "\n".join(type_styles) + "\n}\n"
+    return "\\tikzset{\n" + ",\n".join(type_styles) + ",\n}\n"
 
 
 def render_tikz(
