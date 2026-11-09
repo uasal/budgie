@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, Plantuml_Writer
+from budgie import set_directory, WaveFrontError, MissionLifetime, TransientResponse, DMStroke, Plantuml_Writer
 
 # Test diagram temp section / demo
 file_test = "tests/data/test_budget.yaml"
@@ -27,6 +27,8 @@ if __name__ == "__main__":
             budget = MissionLifetime()
         elif budget_name == "transient_response.yaml":
             budget = TransientResponse()
+        elif budget_name == "dm_stroke.yaml":
+            budget = DMStroke()
         else:
             raise LookupError(f"Cannot find {budget_name}")
         # Increment args

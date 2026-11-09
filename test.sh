@@ -9,6 +9,7 @@ SCRIPT="scripts/run_report.py"
 ML="mission_lifetime.yaml"
 WFE="wavefront_error.yaml"
 TR="transient_response.yaml"
+DMS="dm_stroke.yaml"
 TEST="test_budget.yaml"
 PL="test_plantuml.yaml"
 

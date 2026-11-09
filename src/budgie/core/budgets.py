@@ -94,10 +94,7 @@ class Budget(metaclass=ABCMeta):
                 value1 = p[1]  # dict of values
                 value2 = p[2]  # allocation
                 print(value1)
-                if rss:
-                    calc_spec, calc_cbe = self.rss_values(value1)
-                else:
-                    calc_spec, calc_cbe = self.sum_values(value1)
+                calc_spec, calc_cbe = self.combine_values(value1, rss)
                 self.budget[key1]["curr_spec"] = calc_spec
                 self.budget[key1]["curr_cbe"] = calc_cbe
                 self.budget[key1]["margin_spec"] = value2 - calc_spec
@@ -107,15 +104,22 @@ class Budget(metaclass=ABCMeta):
                 key2 = p[1]
                 value2 = p[2]  # dict of values
                 value3 = p[3]  # allocation
-                if rss:
-                    print(f"{value2=}")
-                    calc_spec, calc_cbe = self.rss_values(value2)
-                else:
-                    calc_spec, calc_cbe = self.sum_values(value2)
+                print(f"{value2=}")
+                calc_spec, calc_cbe = self.combine_values(value2, rss)
                 self.budget[key1][key2]["curr_spec"] = calc_spec
                 self.budget[key1][key2]["curr_cbe"] = calc_cbe
                 self.budget[key1][key2]["margin_spec"] = value3 - calc_spec
                 self.budget[key1][key2]["margin_cbe"] = value3 - calc_cbe
+
+    def combine_values(self, values, rss=True):
+        """Combines the terms under an allocation.
+        A group's optional `combine` key ("rss" or "sum") overrides the budget-wide rss default."""
+        combine = values.get("combine", "rss" if rss else "sum")
+        if combine == "rss":
+            return self.rss_values(values)
+        if combine == "sum":
+            return self.sum_values(values)
+        raise ValueError(f"combine must be 'rss' or 'sum', got {combine!r}")
 
     def rss_values(self, values):
         """Finds values associated with an allocation.

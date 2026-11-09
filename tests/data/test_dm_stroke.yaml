@@ -1,0 +1,59 @@
+budget:
+  name: "Example DM Stroke Budget"
+  version: "v0.1"
+  description: "Example DM stroke budget for tests. Peak-to-valley surface stroke in nm."
+
+dm:
+  description: "Example DM"
+  units: "nm"
+  surface_deflection: 1400  # maximum stroke available in the budget; all allocations draw from this
+  trace: "Example value"
+
+# Terms within a group are summed linearly by default. Set `combine: "rss"` on a group to RSS its terms.
+static:
+  description: "Static correction"
+  units: "nm"
+  combine: "sum"
+  allocation: 400
+  telescope:
+    description: "Static telescope wavefront error"
+    spec: 85
+    trace: "Example value"
+    cbe: 80
+    cbe_trace: "Example measurement"
+  esc:
+    description: "Static instrument wavefront error"
+    spec: 15
+    trace: "Example value"
+    cbe: 12
+    cbe_trace: "Example measurement"
+  dm_flat_map:
+    description: "DM flat map"
+    spec: 300
+    trace: "Example value"
+    cbe: 280
+    cbe_trace: "Example measurement"
+
+dynamic:
+  description: "Time-varying correction"
+  units: "nm"
+  combine: "sum"
+  allocation: 50
+  telescope_low_order:
+    description: "Dynamic low-order correction"
+    spec: 50
+    trace: "Example value"
+    cbe: 45
+    cbe_trace: "Example measurement"
+
+image_plane_wfc:
+  description: "Image plane wavefront control"
+  units: "nm"
+  combine: "sum"
+  allocation: 50
+  dark_hole:
+    description: "Dark hole correction"
+    spec: 50
+    trace: "Example value"
+    cbe: 40
+    cbe_trace: "Example measurement"

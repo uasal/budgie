@@ -3,6 +3,7 @@
 from budgie.version import __version__
 
 from budgie.core import (
+    DMStroke,
     MissionLifetime,
     TransientResponse,
     WaveFrontError,
